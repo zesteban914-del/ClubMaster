@@ -1,0 +1,22 @@
+{
+ "idVales": [
+  5
+ ],
+ "idPedidos": [
+  29,
+  30
+ ],
+ "mesas": [
+  {
+   "id_mesa": 19
+  },
+  {
+   "id_mesa": 20
+  },
+  {
+   "id_mesa": 21
+  }
+ ],
+ "idTestProduct": null,
+ "ts": "2026-09-08T21:11:38.923Z"
+}

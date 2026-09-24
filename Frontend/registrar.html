@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClubMaster - Crear cuenta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; }
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html { width: 100%; max-width: 100%; overflow-x: hidden; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 40%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            overflow-y: auto;
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            max-width: 200vw;
+            height: 200%;
+            pointer-events: none;
+            background: radial-gradient(circle at 30% 50%, rgba(255, 165, 0, 0.06) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(255, 200, 50, 0.04) 0%, transparent 40%);
+            animation: bgPulse 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgPulse {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(1.1) rotate(3deg); }
+        }
+
+        .beer-float {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            animation: beerFloat 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 30px rgba(255, 165, 0, 0.3));
+        }
+
+        .beer-float svg { width: 70px; height: 70px; }
+
+        @keyframes beerFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0px) rotate(-2deg); }
+            50% { transform: translateX(-50%) translateY(-18px) rotate(2deg); }
+        }
+
+        .beer-float::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 6px;
+            background: radial-gradient(ellipse, rgba(255, 165, 0, 0.25) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: beerShadow 3s ease-in-out infinite;
+        }
+
+        @keyframes beerShadow {
+            0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.4; }
+            50% { transform: translateX(-50%) scaleX(0.6); opacity: 0.15; }
+        }
+
+        .bubbles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bubble {
+            position: absolute;
+            bottom: -20px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 215, 100, 0.3), rgba(255, 165, 0, 0.08));
+            border: 1px solid rgba(255, 200, 50, 0.15);
+            animation: bubbleUp linear infinite;
+        }
+
+        @keyframes bubbleUp {
+            0% { transform: translateY(0) translateX(0) scale(1); opacity: 0.6; }
+            50% { opacity: 0.3; }
+            100% { transform: translateY(-110vh) translateX(30px) scale(0.4); opacity: 0; }
+        }
+
+        .register-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 520px;
+            margin: 80px 16px 40px;
+        }
+
+        .register-card {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px 36px 32px;
+            position: relative;
+            animation: cardGlow 4s ease-in-out infinite;
+        }
+
+        @keyframes cardGlow {
+            0%, 100% { box-shadow: 0 0 30px rgba(255, 165, 0, 0.05); }
+            50% { box-shadow: 0 0 60px rgba(255, 165, 0, 0.1); }
+        }
+
+        .register-card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(255, 165, 0, 0.15), transparent 60%);
+            z-index: -1;
+        }
+
+        .register-card h2 {
+            color: #ffc832;
+            font-weight: 800;
+            font-size: 1.4rem;
+            text-align: center;
+            margin-bottom: 2px;
+            text-shadow: 0 0 20px rgba(255, 200, 50, 0.3);
+        }
+
+        .register-card .subtitle {
+            color: rgba(255, 255, 255, 0.4);
+            text-align: center;
+            font-size: 0.8rem;
+            margin-bottom: 24px;
+        }
+
+        .form-label-custom {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .input-group-text {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: none;
+            border-radius: 14px 0 0 14px;
+            color: #ffc832;
+            font-size: 0.9rem;
+            padding: 10px 14px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group .form-control {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: none;
+            border-right: none;
+            border-radius: 0;
+            color: #fff;
+            padding: 10px 14px;
+            height: 46px;
+            font-size: 0.88rem;
+            transition: all 0.3s;
+        }
+
+        .input-group > :first-child { border-radius: 14px 0 0 14px; border-right: none; }
+        .input-group > :last-child { border-radius: 0 14px 14px 0; border-left: none; }
+        .input-group > .form-control { border-radius: 0; }
+
+        .input-group .form-control:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 165, 0, 0.5);
+            box-shadow: none;
+            color: #fff;
+        }
+
+        .input-group:focus-within .input-group-text {
+            border-color: rgba(255, 165, 0, 0.5);
+            box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.1);
+        }
+
+        .input-group .form-control::placeholder { color: rgba(255, 255, 255, 0.25); }
+
+        .toggle-pass {
+            cursor: pointer;
+            border-left: none !important;
+            border-radius: 0 14px 14px 0 !important;
+            transition: color 0.3s;
+            height: 46px;
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-pass:hover { color: #fff; }
+
+        /* Role selector cards */
+        .role-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .role-option {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .role-option input { position: absolute; opacity: 0; pointer-events: none; }
+
+        .role-option .role-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px 8px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .role-option .role-card:hover {
+            background: rgba(255, 165, 0, 0.08);
+            border-color: rgba(255, 165, 0, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .role-option input:checked + .role-card {
+            background: rgba(255, 165, 0, 0.15);
+            border-color: #ffc832;
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.15);
+        }
+
+        .role-card .role-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-size: 1.3rem;
+            transition: all 0.3s;
+        }
+
+        .role-card .role-name {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .role-option input:checked + .role-card .role-name { color: #ffc832; }
+
+        .role-mesero .role-icon { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .role-mesero input:checked + .role-card .role-icon { background: rgba(16, 185, 129, 0.25); box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+
+        .role-cajero .role-icon { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .role-cajero input:checked + .role-card .role-icon { background: rgba(245, 158, 11, 0.25); box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+
+        .role-admin .role-icon { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        .role-admin input:checked + .role-card .role-icon { background: rgba(59, 130, 246, 0.25); box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
+
+        .btn-register {
+            background: linear-gradient(135deg, #ffc832, #f59e0b);
+            border: none;
+            border-radius: 14px;
+            color: #1a1a2e;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 12px;
+            width: 100%;
+            margin-top: 4px;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 165, 0, 0.35);
+            background: linear-gradient(135deg, #ffd34a, #fbbf24);
+        }
+
+        .btn-register:active { transform: translateY(0); }
+
+        .login-link {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .login-link:hover { color: #ffc832; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        #mensaje .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 12px 16px;
+            font-size: 0.82rem;
+            margin-top: 12px;
+        }
+
+        .alert-success-custom {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .alert-danger-custom {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .spinner-reg {
+            display: none;
+            width: 20px; height: 20px;
+            border: 3px solid rgba(26, 26, 46, 0.2);
+            border-top-color: #1a1a2e;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .btn-register.loading .btn-text { display: none; }
+        .btn-register.loading .spinner-reg { display: inline-block; }
+
+        /* ========== FUERZA DE CONTRASENA ========== */
+        .strength-wrap {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .strength-bar {
+            flex: 1;
+            height: 6px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .strength-bar::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; height: 100%;
+            width: 0%;
+            border-radius: 6px;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .strength-bar.weak::after   { width: 25%; background: #ef4444; }
+        .strength-bar.fair::after   { width: 50%; background: #f59e0b; }
+        .strength-bar.good::after   { width: 75%; background: #3b82f6; }
+        .strength-bar.strong::after { width: 100%; background: #10b981; }
+
+        .strength-label { color: rgba(255,255,255,0.5); font-size: 0.72rem; white-space: nowrap; }
+
+        .match-feedback { margin-top: 6px; font-size: 0.75rem; min-height: 16px; }
+        .match-feedback.match-ok  { color: #10b981; }
+        .match-feedback.match-err { color: #ef4444; }
+
+        @media (max-width: 480px) {
+            .register-container { margin-top: 70px; }
+            .register-card { padding: 28px 20px 24px; }
+            .form-row { grid-template-columns: 1fr; gap: 16px; }
+            .role-selector { grid-template-columns: 1fr; gap: 8px; }
+            .role-card { padding: 12px; display: flex; align-items: center; gap: 12px; text-align: left; }
+            .role-card .role-icon { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CERVEZA FLOTANTE -->
+    <div class="beer-float">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="beerGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffe066"/>
+                    <stop offset="100%" stop-color="#f59e0b"/>
+                </linearGradient>
+                <linearGradient id="foamGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#fff"/>
+                    <stop offset="100%" stop-color="#fef3c7"/>
+                </linearGradient>
+            </defs>
+            <path d="M16 18 L14 54 C14 56 16 58 18 58 L46 58 C48 58 50 56 50 54 L48 18 Z" fill="url(#beerGrad)" opacity="0.85"/>
+            <path d="M20 20 L19 52 C19 53 20 54 21 54 L24 54 L25 20 Z" fill="rgba(255,255,255,0.25)"/>
+            <ellipse cx="32" cy="17" rx="20" ry="6" fill="url(#foamGrad)"/>
+            <circle cx="20" cy="14" r="5" fill="#fff" opacity="0.9"/>
+            <circle cx="32" cy="12" r="6" fill="#fff" opacity="0.95"/>
+            <circle cx="43" cy="14" r="5" fill="#fff" opacity="0.9"/>
+            <circle cx="26" cy="11" r="4" fill="#fef3c7" opacity="0.7"/>
+            <circle cx="38" cy="11" r="4" fill="#fef3c7" opacity="0.7"/>
+            <circle cx="25" cy="30" r="1.5" fill="rgba(255,255,255,0.35)"/>
+            <circle cx="35" cy="36" r="1.2" fill="rgba(255,255,255,0.3)"/>
+            <circle cx="28" cy="42" r="1.8" fill="rgba(255,255,255,0.25)"/>
+            <circle cx="38" cy="28" r="1" fill="rgba(255,255,255,0.3)"/>
+            <circle cx="32" cy="48" r="1.3" fill="rgba(255,255,255,0.2)"/>
+            <path d="M50 24 C58 24 58 42 50 42" fill="none" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+        </svg>
+    </div>
+
+    <!-- BURBUJAS -->
+    <div class="bubbles" id="bubbles"></div>
+
+    <!-- CONTENEDOR -->
+    <div class="register-container">
+        <div class="register-card">
+            <h2><i class="bi bi-person-plus"></i> Crear cuenta</h2>
+            <p class="subtitle">Completa tus datos para registrarte en ClubMaster</p>
+
+            <form id="formRegistro" onsubmit="return false;">
+
+                <!-- Nombre -->
+                <div class="mb-3">
+                    <label class="form-label-custom">Nombre completo *</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" id="regNombre" class="form-control" placeholder="Ej: Juan Perez" required>
+                    </div>
+                </div>
+
+                <!-- Correo -->
+                <div class="mb-3">
+                    <label class="form-label-custom">Correo electronico *</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input type="email" id="regCorreo" class="form-control" placeholder="tu@correo.com" required>
+                    </div>
+                </div>
+
+                <!-- Telefono -->
+                <div class="mb-3">
+                    <label class="form-label-custom">Telefono</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                        <input type="tel" id="regTelefono" class="form-control" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <!-- Contrasenas -->
+                <div class="form-row mb-2">
+                    <div>
+                        <label class="form-label-custom">Contrasena *</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" id="regContrasena" class="form-control" placeholder="Minimo 6" required minlength="6" autocomplete="new-password">
+                            <span class="input-group-text toggle-pass" onclick="togglePass('regContrasena','eye1')"><i class="bi bi-eye" id="eye1"></i></span>
+                        </div>
+                        <!-- Indicador de fuerza de contrasena -->
+                        <div class="strength-wrap">
+                            <div class="strength-bar" id="strengthBar"></div>
+                            <span class="strength-label" id="strengthLabel">Fuerza: --</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label-custom">Confirmar contrasena *</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <input type="password" id="regContrasena2" class="form-control" placeholder="Repite" required minlength="6" autocomplete="new-password">
+                            <span class="input-group-text toggle-pass" onclick="togglePass('regContrasena2','eye2')"><i class="bi bi-eye" id="eye2"></i></span>
+                        </div>
+                        <div class="match-feedback" id="matchFeedback"></div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-register" id="btnRegistrar" onclick="registrarUsuario()">
+                    <span class="btn-text"><i class="bi bi-check-circle me-1"></i> Crear mi cuenta</span>
+                    <span class="spinner-reg"></span>
+                </button>
+
+                <a href="/" class="login-link"><i class="bi bi-arrow-left me-1"></i> Ya tengo cuenta, iniciar sesion</a>
+
+                <div id="mensaje"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Burbujas
+        (function() {
+            var cont = document.getElementById('bubbles');
+            for (var i = 0; i < 15; i++) {
+                var b = document.createElement('div');
+                b.className = 'bubble';
+                var size = Math.random() * 18 + 6;
+                b.style.width = size + 'px';
+                b.style.height = size + 'px';
+                b.style.left = Math.random() * 100 + '%';
+                b.style.animationDuration = (Math.random() * 8 + 8) + 's';
+                b.style.animationDelay = (Math.random() * 10) + 's';
+                cont.appendChild(b);
+            }
+        })();
+
+        // Toggle password
+        function togglePass(inputId, iconId) {
+            var inp = document.getElementById(inputId);
+            var icon = document.getElementById(iconId);
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                inp.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        // ========== FUERZA DE CONTRASENA (tiempo real) ==========
+        function evaluarFuerza() {
+            var pass = document.getElementById('regContrasena').value;
+            var bar = document.getElementById('strengthBar');
+            var label = document.getElementById('strengthLabel');
+            var score = 0;
+
+            if (!pass) {
+                bar.className = 'strength-bar';
+                label.textContent = 'Fuerza: --';
+                return;
+            }
+            if (pass.length >= 6) score++;
+            if (pass.length >= 10) score++;
+            if (/[A-Z]/.test(pass)) score++;
+            if (/[0-9]/.test(pass)) score++;
+            if (/[^A-Za-z0-9]/.test(pass)) score++;
+
+            if (score <= 1) { bar.className = 'strength-bar weak'; label.textContent = 'Fuerza: Baja'; }
+            else if (score === 2) { bar.className = 'strength-bar fair'; label.textContent = 'Fuerza: Media'; }
+            else if (score === 3 || score === 4) { bar.className = 'strength-bar good'; label.textContent = 'Fuerza: Buena'; }
+            else { bar.className = 'strength-bar strong'; label.textContent = 'Fuerza: Fuerte'; }
+        }
+
+        // ========== COINCIDENCIA DE CONTRASENAS (tiempo real) ==========
+        function verificarCoincidencia() {
+            var pass = document.getElementById('regContrasena').value;
+            var pass2 = document.getElementById('regContrasena2').value;
+            var fb = document.getElementById('matchFeedback');
+
+            if (pass2 === '') {
+                fb.className = 'match-feedback';
+                fb.innerHTML = '';
+                return;
+            }
+            if (pass === pass2) {
+                fb.className = 'match-feedback match-ok';
+                fb.innerHTML = '<i class="bi bi-check-circle me-1"></i> Las contrasenas coinciden';
+            } else {
+                fb.className = 'match-feedback match-err';
+                fb.innerHTML = '<i class="bi bi-x-circle me-1"></i> Las contrasenas no coinciden';
+            }
+        }
+
+        // Validacion en tiempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('regContrasena').addEventListener('input', function() {
+                evaluarFuerza();
+                verificarCoincidencia();
+            });
+            document.getElementById('regContrasena2').addEventListener('input', verificarCoincidencia);
+        });
+
+        // Registrar (registro publico -> solo rol de menor privilegio asignado por el servidor)
+        function registrarUsuario() {
+            var nombre = document.getElementById('regNombre').value.trim();
+            var correo = document.getElementById('regCorreo').value.trim();
+            var contrasena = document.getElementById('regContrasena').value;
+            var contrasena2 = document.getElementById('regContrasena2').value;
+            var msg = document.getElementById('mensaje');
+            var btn = document.getElementById('btnRegistrar');
+
+            if (!nombre || !correo || !contrasena) {
+                msg.innerHTML = '<div class="alert alert-danger-custom">Todos los campos marcados con * son obligatorios.</div>';
+                return;
+            }
+
+            if (contrasena !== contrasena2) {
+                msg.innerHTML = '<div class="alert alert-danger-custom">Las contrasenas no coinciden.</div>';
+                return;
+            }
+
+            if (contrasena.length < 6) {
+                msg.innerHTML = '<div class="alert alert-danger-custom">La contrasena debe tener al menos 6 caracteres.</div>';
+                return;
+            }
+
+            btn.classList.add('loading');
+
+            // NOTA: NO se envia id_rol. El servidor asigna el rol de menor privilegio.
+            fetch('/api/registro', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nombre: nombre,
+                    correo: correo,
+                    contrasena: contrasena
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.classList.remove('loading');
+                if (data.exito) {
+                    msg.innerHTML = '<div class="alert alert-success-custom"><i class="bi bi-check-circle me-1"></i> Cuenta creada correctamente. Redirigiendo al login...</div>';
+                    setTimeout(function() { window.location.href = '/'; }, 1800);
+                } else {
+                    msg.innerHTML = '<div class="alert alert-danger-custom">' + (data.mensaje || 'Error al crear la cuenta') + '</div>';
+                }
+            })
+            .catch(function() {
+                btn.classList.remove('loading');
+                msg.innerHTML = '<div class="alert alert-danger-custom">No se pudo conectar con el servidor.</div>';
+            });
+        }
+    </script>
+</body>
+</html>

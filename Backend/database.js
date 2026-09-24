@@ -1,0 +1,180 @@
+const { pool } = require('./config/database');
+
+const mesaService = require('./services/mesa-service');
+const jornadaService = require('./services/jornada-service');
+const productoService = require('./services/producto-service');
+const proveedorService = require('./services/proveedor-service');
+const usuarioService = require('./services/usuario-service');
+const mermaService = require('./services/merma-service');
+const clienteService = require('./services/cliente-service');
+const categoriaService = require('./services/categoria-service');
+const configService = require('./services/config-service');
+const reporteService = require('./services/reporte-service');
+const facturacionService = require('./services/facturacion-service');
+const configuracionGeneralService = require('./services/configuracion-general-service');
+const turnosService = require('./services/turnos-service');
+const devolucionService = require('./services/devolucion-service');
+
+module.exports = {
+    pool,
+
+    obtenerMesas: mesaService.obtenerMesas,
+    obtenerZonas: mesaService.obtenerZonas,
+    crearZona: mesaService.crearZona,
+    crearMesa: mesaService.crearMesa,
+    actualizarMesa: mesaService.actualizarMesa,
+    toggleMesa: mesaService.toggleMesa,
+    cambiarMesaEstado: mesaService.cambiarMesaEstado,
+    unirMesas: mesaService.unirMesas,
+    transferirMesa: mesaService.transferirMesa,
+    estadoMesaOcupada: mesaService.estadoMesaOcupada,
+    estadosMesasOcupadas: mesaService.estadosMesasOcupadas,
+    obtenerMesasActivas: mesaService.obtenerMesasActivas,
+    obtenerPresentaciones: mesaService.obtenerPresentaciones,
+    obtenerNotasPreparacion: mesaService.obtenerNotasPreparacion,
+
+    crearPedido: jornadaService.crearPedido,
+    obtenerJornadaActiva: jornadaService.obtenerJornadaActiva,
+    abrirJornada: jornadaService.abrirJornada,
+    cerrarJornada: jornadaService.cerrarJornada,
+    obtenerResumenJornada: jornadaService.obtenerResumenJornada,
+    obtenerResumenJornadaCompleto: jornadaService.obtenerResumenJornadaCompleto,
+    obtenerMovimientosCaja: jornadaService.obtenerMovimientosCaja,
+    crearMovimientoCaja: jornadaService.crearMovimientoCaja,
+    calcularYGuardarArqueo: jornadaService.calcularYGuardarArqueo,
+    obtenerReporteJornada: jornadaService.obtenerReporteJornada,
+    obtenerMetodosPagoCatalogo: jornadaService.obtenerMetodosPagoCatalogo,
+
+    obtenerProductosAdmin: productoService.obtenerProductosAdmin,
+    obtenerProductoPorId: productoService.obtenerProductoPorId,
+    obtenerProductosActivos: productoService.obtenerProductosActivos,
+    insertarProducto: productoService.insertarProducto,
+    actualizarProducto: productoService.actualizarProducto,
+    eliminarProducto: productoService.eliminarProducto,
+    actualizarStock: productoService.actualizarStock,
+    descontarStockConConversion: productoService.descontarStockConConversion,
+    facturarDividido: productoService.facturarDividido,
+    obtenerFacturaPorId: productoService.obtenerFacturaPorId,
+    obtenerFacturasJornada: productoService.obtenerFacturasJornada,
+
+    obtenerProveedores: proveedorService.obtenerProveedores,
+    crearProveedor: proveedorService.crearProveedor,
+    actualizarProveedor: proveedorService.actualizarProveedor,
+    toggleProveedor: proveedorService.toggleProveedor,
+    obtenerFichaProveedor: proveedorService.obtenerFichaProveedor,
+    obtenerComprasPorProveedor: proveedorService.obtenerComprasPorProveedor,
+    obtenerPagosPorProveedor: proveedorService.obtenerPagosPorProveedor,
+    crearPagoProveedor: proveedorService.crearPagoProveedor,
+    obtenerCompras: proveedorService.obtenerCompras,
+    crearCompra: proveedorService.crearCompra,
+    obtenerDetalleCompra: proveedorService.obtenerDetalleCompra,
+
+    obtenerUsuarios: usuarioService.obtenerUsuarios,
+    crearUsuario: usuarioService.crearUsuario,
+    actualizarUsuario: usuarioService.actualizarUsuario,
+    actualizarContrasena: usuarioService.actualizarContrasena,
+    toggleUsuario: usuarioService.toggleUsuario,
+    obtenerRoles: usuarioService.obtenerRoles,
+    crearRol: usuarioService.crearRol,
+    actualizarRol: usuarioService.actualizarRol,
+    eliminarRol: usuarioService.eliminarRol,
+    obtenerPermisos: usuarioService.obtenerPermisos,
+    obtenerPermisosPorRol: usuarioService.obtenerPermisosPorRol,
+    guardarPermisosRol: usuarioService.guardarPermisosRol,
+    obtenerUsuarioPorCorreoConHash: usuarioService.obtenerUsuarioPorCorreoConHash,
+    obtenerUsuarioPorCorreo: usuarioService.obtenerUsuarioPorCorreo,
+    guardarTokenRecuperacion: usuarioService.guardarTokenRecuperacion,
+    buscarTokenRecuperacion: usuarioService.buscarTokenRecuperacion,
+    marcarTokenUsado: usuarioService.marcarTokenUsado,
+
+    crearMerma: mermaService.crearMerma,
+    obtenerMermasMes: mermaService.obtenerMermasMes,
+    obtenerMermasFiltradas: mermaService.obtenerMermasFiltradas,
+    obtenerKPIsMermas: mermaService.obtenerKPIsMermas,
+
+    crearVale: clienteService.crearVale,
+    valesPendientes: clienteService.valesPendientes,
+    obtenerClientesSocios: clienteService.obtenerClientesSocios,
+    crearClienteSocio: clienteService.crearClienteSocio,
+    actualizarClienteSocio: clienteService.actualizarClienteSocio,
+    toggleClienteSocio: clienteService.toggleClienteSocio,
+    resumenCartera: clienteService.resumenCartera,
+    crearCuentaDesdeMesa: clienteService.crearCuentaDesdeMesa,
+    liberarValeDeMesa: clienteService.liberarValeDeMesa,
+    calcularMoraVale: clienteService.calcularMoraVale,
+    abonarVale: clienteService.abonarVale,
+    liquidarVale: clienteService.liquidarVale,
+    exonerarMoraVale: clienteService.exonerarMoraVale,
+    registrarIngresoAbonoCaja: clienteService.registrarIngresoAbonoCaja,
+    obtenerAbonosVale: clienteService.obtenerAbonosVale,
+
+    obtenerCategorias: categoriaService.obtenerCategorias,
+    crearCategoria: categoriaService.crearCategoria,
+    renombrarCategoria: categoriaService.renombrarCategoria,
+    eliminarCategoria: categoriaService.eliminarCategoria,
+
+    obtenerConfiguracionInventario: configService.obtenerConfiguracionInventario,
+    guardarConfiguracionInventario: configService.guardarConfiguracionInventario,
+    obtenerUnidadesMedida: configService.obtenerUnidadesMedida,
+    crearUnidadMedida: configService.crearUnidadMedida,
+    actualizarUnidadMedida: configService.actualizarUnidadMedida,
+    eliminarUnidadMedida: configService.eliminarUnidadMedida,
+    obtenerConversiones: configService.obtenerConversiones,
+    guardarConversiones: configService.guardarConversiones,
+    ajustarPreciosMasivo: configService.ajustarPreciosMasivo,
+    aplicarImpuestosGlobales: configService.aplicarImpuestosGlobales,
+
+    topProductos: reporteService.topProductos,
+    historicoIngresos: reporteService.historicoIngresos,
+    tiemposBarra: reporteService.tiemposBarra,
+    analisisInventario: reporteService.analisisInventario,
+    reporteVentasGeneral: reporteService.reporteVentasGeneral,
+    reportePersonalZonas: reporteService.reportePersonalZonas,
+    reporteTicketEmpleadoDetallado: reporteService.reporteTicketEmpleadoDetallado,
+    reporteInventarioCostos: reporteService.reporteInventarioCostos,
+    obtenerOpcionesFiltros: reporteService.obtenerOpcionesFiltros,
+    reporteFamilias: reporteService.reporteFamilias,
+    reporteDescuentos: reporteService.reporteDescuentos,
+    reporteRetiros: reporteService.reporteRetiros,
+    reporteImpuestos: reporteService.reporteImpuestos,
+    reportePropinas: reporteService.reportePropinas,
+    reporteNocturna: reporteService.reporteNocturna,
+    reporteAuditoria: reporteService.reporteAuditoria,
+    reporteCajon: reporteService.reporteCajon,
+    reporteHorario: reporteService.reporteHorario,
+    reporteContableFacturas: reporteService.reporteContableFacturas,
+    reporteContableGastos: reporteService.reporteContableGastos,
+    reporteStock: reporteService.reporteStock,
+
+    obtenerFacturasMesas: facturacionService.obtenerFacturasMesas,
+    obtenerFacturaMesaDetalle: facturacionService.obtenerFacturaMesaDetalle,
+    obtenerFacturasCompras: facturacionService.obtenerFacturasCompras,
+    obtenerFacturaCompraDetalle: facturacionService.obtenerFacturaCompraDetalle,
+    obtenerFacturasVales: facturacionService.obtenerFacturasVales,
+    obtenerFacturaValeDetalle: facturacionService.obtenerFacturaValeDetalle,
+
+    obtenerConfiguracionGeneral: configuracionGeneralService.obtenerConfiguracionGeneral,
+    guardarConfiguracionGeneral: configuracionGeneralService.guardarConfiguracionGeneral,
+
+    abrirTurno: turnosService.abrirTurno,
+    cerrarTurno: turnosService.cerrarTurno,
+    obtenerTurnoActivo: turnosService.obtenerTurnoActivo,
+    listarTurnos: turnosService.listarTurnos,
+    reporteTurnos: turnosService.reporteHorasPorEmpleado,
+    getCajaActiva: turnosService.getCajaActiva,
+
+    obtenerColumnasProductos: require('./helpers/column-detection').obtenerColumnasProductos,
+
+    obtenerProductosPorProveedor: devolucionService.obtenerProductosPorProveedor,
+    obtenerProductosActivosDisponiblesParaAsociar: devolucionService.obtenerProductosActivosDisponiblesParaAsociar,
+    asociarProductoProveedor: devolucionService.asociarProductoProveedor,
+    actualizarRelacionProductoProveedor: devolucionService.actualizarRelacionProductoProveedor,
+    eliminarRelacionProductoProveedor: devolucionService.eliminarRelacionProductoProveedor,
+    obtenerProveedoresPorProducto: devolucionService.obtenerProveedoresPorProducto,
+    crearDevolucion: devolucionService.crearDevolucion,
+    cambiarEstadoDevolucion: devolucionService.cambiarEstadoDevolucion,
+    obtenerDevoluciones: devolucionService.obtenerDevoluciones,
+    obtenerDevolucionDetalle: devolucionService.obtenerDevolucionDetalle,
+    obtenerDevolucionesPorProveedor: devolucionService.obtenerDevolucionesPorProveedor,
+    obtenerDevolucionesPorProducto: devolucionService.obtenerDevolucionesPorProducto
+};

@@ -1,0 +1,29 @@
+# Dependencias
+node_modules/
+package-lock.json
+
+# Variables de entorno - NUNCA subir al repo
+.env
+.env.local
+.env.production
+Backend/.env
+
+# Logs y temp
+npm-debug.log*
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+Backend/backups/
+backups/
+*.sql
+*.dump
+*.sql.gz
+*.enc

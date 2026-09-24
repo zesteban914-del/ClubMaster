@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comandero - ClubMaster</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>html, body { width: 100%; max-width: 100%; overflow-x: hidden; }</style>
+</head>
+<body class="bg-light">
+
+    <!-- Barra de Navegación superior -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3 shadow-sm">
+        <div class="container-fluid">
+            <span class="navbar-brand fw-bold" id="tituloMesa">
+                <i class="bi bi-shop me-2"></i>Cargando Mesa...
+            </span>
+            <a href="/mesas" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Volver al Mapa
+            </a>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-3">
+        <div class="row g-3">
+            
+            <!-- Panel Izquierdo: Catálogo y Búsqueda -->
+            <div class="col-12 col-md-7 col-lg-8">
+                <div class="card border-0 shadow-sm p-3 mb-3">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" id="buscador" class="form-control" placeholder="Buscar cerveza, trago, pasaboca..." onkeyup="filtrarProductos()">
+                    </div>
+
+                    <!-- Contenedor dinámico de productos en Grid de Bootstrap -->
+                    <div class="row g-2" id="contenedorProductos">
+                        <!-- Las tarjetas de productos se renderizan mediante comandero.js -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Derecho: Resumen del Pedido / Comanda -->
+            <div class="col-12 col-md-5 col-lg-4">
+                <div class="card border-0 shadow-sm p-3 sticky-top" style="top: 15px;">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                        <h5 class="fw-bold m-0"><i class="bi bi-cart3 me-2"></i>Comanda</h5>
+                        <span class="badge bg-primary rounded-pill" id="badgeTotalItems">0 ítems</span>
+                    </div>
+
+                    <!-- Lista de ítems seleccionados -->
+                    <div class="overflow-auto mb-3" style="max-height: 350px;">
+                        <ul class="list-group list-group-flush" id="listaCarrito">
+                            <li class="list-group-item text-center text-muted py-4">
+                                <i class="bi bi-basket display-6 d-block mb-2 text-secondary"></i>
+                                Selecciona productos del catálogo
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Selector mesero (solo Cajero/Admin, obligatorio) -->
+                    <div id="meseroSelectorWrapC" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px;margin-bottom:12px">
+                        <label style="font-size:.75rem;font-weight:700;color:#92400e;text-transform:uppercase;display:flex;align-items:center;gap:6px"><i class="bi bi-person-badge"></i> Mesero responsable *</label>
+                        <select id="meseroSelectorComandaC" class="form-select mt-1" style="border-radius:8px;border:1px solid #fdba74"><option value="">-- Seleccione mesero --</option></select>
+                        <small style="font-size:.68rem;color:#9a3412">Obligatorio cuando quien digita es Cajero/Administrador</small>
+                    </div>
+                    <div id="meseroAutoInfoC" class="alert alert-primary py-2" style="font-size:.82rem;display:flex;align-items:center;gap:8px"><i class="bi bi-person-fill"></i> <span>Mesero: <strong id="meseroAutoNombreC">--</strong></span></div>
+                    <!-- Pie de la comanda con Total y Botón de Envío -->
+                    <div class="border-top pt-3">
+                        <div class="d-flex justify-content-between align-items-center fs-4 fw-bold mb-3">
+                            <span>Total:</span>
+                            <span class="text-success" id="txtTotal">$0</span>
+                        </div>
+
+                        <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" onclick="confirmarPedido()">
+                            <i class="bi bi-check-circle-fill me-2"></i>Enviar Pedido
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/escape-html.js"></script>
+    <script src="js/meseroMovil.js"></script>
+    <script>
+        var API_BASE = '';
+        var mesaSeleccionada = null;
+        var productos = [];
+        var carrito = [];
+
+        function esMeseroActualC(){
+            try{ var u=JSON.parse(localStorage.getItem('usuario')||'{}'); var r=String(u.rol||'').toLowerCase(); return r.indexOf('meser')!==-1 || Number(u.id_rol)===3; }catch(e){return false;}
+        }
+        function esBartenderActualC(){
+            try{ var u=JSON.parse(localStorage.getItem('usuario')||'{}'); var r=String(u.rol||'').toLowerCase(); return r.indexOf('bartender')!==-1 || r.indexOf('barman')!==-1 || Number(u.id_rol)===7; }catch(e){return false;}
+        }
+        function esZonaBarraC(z){ return String(z||'').toLowerCase().indexOf('barra')!==-1; }
+        function cargarMeseroSelectorC(){
+            var isAtiendeDirecto = esMeseroActualC() || esBartenderActualC();
+            var auto = document.getElementById('meseroAutoInfoC');
+            var wrap = document.getElementById('meseroSelectorWrapC');
+            var sel = document.getElementById('meseroSelectorComandaC');
+            var nombreEl = document.getElementById('meseroAutoNombreC');
+            var u = JSON.parse(localStorage.getItem('usuario')||'{}');
+            if (nombreEl) nombreEl.textContent = u.nombre || 'Usuario autenticado';
+            if (isAtiendeDirecto) { if(auto) auto.style.display='flex'; if(wrap) wrap.style.display='none'; return; }
+            if(auto) auto.style.display='none'; if(wrap) wrap.style.display='block';
+            if(!sel) return;
+            sel.innerHTML='<option value="">-- Seleccione responsable --</option>';
+            // La zona de la mesa decide el rol del selector: Barra -> bartender, resto -> mesero.
+            fetch(API_BASE+'/api/mesas/'+mesaSeleccionada+'/estado', { credentials: 'include' })
+                .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+                .then(function(w){
+                    var zona = (w.ok && w.d && w.d.zona) || '';
+                    if (!w.ok && w.d && w.d.mensaje) { sel.innerHTML='<option value="">'+String(w.d.mensaje).substring(0,80)+'</option>'; return; }
+                    var quiereBarra = esZonaBarraC(zona);
+                    var label = document.querySelector('#meseroSelectorWrapC label');
+                    if (label) label.textContent = quiereBarra ? 'Personal de barra responsable *' : 'Mesero responsable *';
+                    return fetch(API_BASE+'/api/usuarios').then(function(r){return r.json()}).then(function(d){
+                        (d.usuarios||[]).filter(function(x){
+                            var rr=String(x.rol_nombre||x.rol||'').toLowerCase();
+                            var idr=Number(x.id_rol);
+                            if (quiereBarra) return rr.indexOf('bartender')!==-1||rr.indexOf('barman')!==-1||idr===7;
+                            return rr.indexOf('mesero')!==-1||rr.indexOf('mesera')!==-1||idr===3;
+                        }).forEach(function(m){ var op=document.createElement('option'); op.value=m.id_usuario; op.textContent=m.nombre; sel.appendChild(op); });
+                        if (sel.options.length<=1) sel.innerHTML='<option value="">'+(quiereBarra?'No hay personal de barra activo':'No hay meseros activos')+'</option>';
+                    });
+                })
+                .catch(function(){});
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            var params = new URLSearchParams(window.location.search);
+            var idMesa = params.get('id_mesa');
+            if (idMesa) mesaSeleccionada = parseInt(idMesa);
+            document.getElementById('tituloMesa').innerHTML = '<i class="bi bi-shop me-2"></i>Mesa ' + (idMesa || '?');
+            cargarProductos();
+            cargarMeseroSelectorC();
+        });
+
+        function cargarProductos() {
+            var cont = document.getElementById('contenedorProductos');
+            cont.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+            fetch(API_BASE + '/api/productos')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) { productos = data.productos; renderizarProductos(productos); }
+                })
+                .catch(function() { cont.innerHTML = '<p class="text-danger">Error al cargar productos</p>'; });
+        }
+
+        function renderizarProductos(lista) {
+            var cont = document.getElementById('contenedorProductos');
+            cont.innerHTML = '';
+            if (lista.length === 0) { cont.innerHTML = '<p class="text-muted">No hay productos.</p>'; return; }
+            lista.forEach(function(p) {
+                var col = document.createElement('div');
+                col.className = 'col-6 col-md-4 col-lg-3';
+                var card = document.createElement('div');
+                card.className = 'card h-100 shadow-sm';
+                card.style.cursor = 'pointer';
+                card.dataset.id = p.id_producto;
+                card.dataset.nombre = p.nombre || '';
+                card.dataset.precio = p.precio;
+                card.onclick = function() { agregarAlCarrito(Number(this.dataset.id), this.dataset.nombre, Number(this.dataset.precio)); };
+                var body = document.createElement('div');
+                body.className = 'card-body p-2 text-center';
+                var h6 = document.createElement('h6');
+                h6.className = 'card-title fw-bold mb-1';
+                h6.textContent = p.nombre || '';
+                var cat = document.createElement('p');
+                cat.className = 'text-muted small mb-1';
+                cat.textContent = p.categoria || '';
+                var pr = document.createElement('span');
+                pr.className = 'text-success fw-bold';
+                pr.textContent = '$' + Number(p.precio).toLocaleString();
+                body.appendChild(h6); body.appendChild(cat); body.appendChild(pr);
+                card.appendChild(body);
+                col.appendChild(card);
+                cont.appendChild(col);
+            });
+        }
+
+        function filtrarProductos() {
+            var term = document.getElementById('buscador').value.toLowerCase();
+            renderizarProductos(productos.filter(function(p) {
+                return p.nombre.toLowerCase().indexOf(term) !== -1 || (p.categoria && p.categoria.toLowerCase().indexOf(term) !== -1);
+            }));
+        }
+
+        function agregarAlCarrito(idProducto, nombre, precio) {
+            var ex = carrito.find(function(i) { return i.id_producto === idProducto; });
+            if (ex) ex.cantidad++;
+            else carrito.push({ id_producto: idProducto, nombre: nombre, precio_unitario: precio, cantidad: 1, observaciones: '' });
+            actualizarCarrito();
+        }
+
+        function quitarDelCarrito(idProducto) {
+            var idx = carrito.findIndex(function(i) { return i.id_producto === idProducto; });
+            if (idx !== -1) { if (carrito[idx].cantidad > 1) carrito[idx].cantidad--; else carrito.splice(idx, 1); }
+            actualizarCarrito();
+        }
+
+        function actualizarCarrito() {
+            var lista = document.getElementById('listaCarrito');
+            var badge = document.getElementById('badgeTotalItems');
+            var txtTotal = document.getElementById('txtTotal');
+            var totalItems = 0, total = 0;
+            carrito.forEach(function(i) { totalItems += i.cantidad; total += i.cantidad * i.precio_unitario; });
+            badge.textContent = totalItems + ' items';
+            lista.innerHTML = '';
+            if (carrito.length === 0) {
+                lista.innerHTML = '<li class="list-group-item text-center text-muted py-4"><i class="bi bi-basket display-6 d-block mb-2 text-secondary"></i>Selecciona productos</li>';
+            } else {
+                carrito.forEach(function(item) {
+                    var li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    var left = document.createElement('div');
+                    var st = document.createElement('strong');
+                    st.textContent = item.nombre;
+                    var sm = document.createElement('small');
+                    sm.className = 'text-muted';
+                    sm.textContent = '$' + Number(item.precio_unitario).toLocaleString() + ' x ' + item.cantidad;
+                    left.appendChild(st); left.appendChild(document.createElement('br')); left.appendChild(sm);
+                    var right = document.createElement('div');
+                    right.className = 'd-flex align-items-center gap-2';
+                    var tot = document.createElement('span');
+                    tot.className = 'fw-bold';
+                    tot.textContent = '$' + (item.cantidad * item.precio_unitario).toLocaleString();
+                    var btn = document.createElement('button');
+                    btn.className = 'btn btn-sm btn-outline-danger';
+                    btn.textContent = '-';
+                    btn.dataset.id = item.id_producto;
+                    btn.onclick = function() { quitarDelCarrito(Number(this.dataset.id)); };
+                    right.appendChild(tot); right.appendChild(btn);
+                    li.appendChild(left); li.appendChild(right);
+                    lista.appendChild(li);
+                });
+            }
+            txtTotal.textContent = '$' + total.toLocaleString();
+        }
+
+        function confirmarPedido() {
+            if (carrito.length === 0) { alert('Agrega al menos un producto.'); return; }
+            var usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+            var isMesero = esMeseroActualC() || esBartenderActualC();
+            var meseroId;
+            if (isMesero) meseroId = usuario.id_usuario || 1;
+            else {
+                var sel = document.getElementById('meseroSelectorComandaC');
+                var v = sel ? String(sel.value||'').trim() : '';
+                if (!v || !Number(v)) { alert('Seleccione el mesero responsable (obligatorio para Cajero/Administrador).'); if(sel) sel.focus(); return; }
+                meseroId = Number(v);
+            }
+            var cajeroId = usuario.id_usuario || 1;
+            fetch(API_BASE + '/api/jornada/activa', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+                var jornada = j.jornada || j.activa || j.data;
+                var idJornada = (jornada && (jornada.id_jornada || jornada.id)) || j.id_jornada;
+                if (!idJornada || (jornada && jornada.estado && jornada.estado !== 'Abierta' && !j.abierta)) { alert('No hay jornada/caja abierta. Realice apertura de caja.'); return; }
+                var payload = {
+                    id_mesa: mesaSeleccionada,
+                    id_usuario: cajeroId,
+                    id_cajero: cajeroId,
+                    id_mesero: meseroId,
+                    id_jornada: idJornada,
+                    clave_cliente: 'c' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    detalles: carrito.map(function(i) { return { id_producto: i.id_producto, cantidad: i.cantidad, precio_unitario: i.precio_unitario, observaciones: i.observaciones }; })
+                };
+                enviarPayloadPedido(payload);
+            })
+            .catch(function() { alert('No se pudo obtener jornada activa.'); });
+        }
+
+        function enviarPayloadPedido(payload) {
+            if(navigator.onLine===false){
+                guardarPedidoOffline(payload);
+                var ind=document.getElementById('offlineIndicator'); if(!ind){ ind=document.createElement('div'); ind.id='offlineIndicator'; ind.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#451a03;color:#fbbf24;border:1px solid #92400e;padding:10px 18px;border-radius:12px;font-weight:700;z-index:9999'; ind.textContent='⚠️ Comanda guardada localmente (Sin red)'; document.body.appendChild(ind);} ind.style.display='block';
+                alert('⚠️ Comanda guardada localmente (Sin red) — se reintentará cada 5s');
+                carrito = []; actualizarCarrito(); window.location.href = '/app'; return;
+            }
+            if(window._enviandoComanda) return; window._enviandoComanda=true;
+            var ctrl=new AbortController(); var tid=setTimeout(function(){ctrl.abort();},15000);
+            fetch(API_BASE + '/api/pedidos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+                signal: ctrl.signal
+            })
+            .then(function(r) { clearTimeout(tid); window._enviandoComanda=false; return r.json().then(function(d){ return {status:r.status, d:d}; }); })
+            .then(function(w) {
+                var data = w.d || {};
+                if (data.success) {
+                    alert('Pedido #' + data.idPedido + (data.duplicado?' (duplicado evitado)':'') + ' enviado.');
+                    carrito = [];
+                    actualizarCarrito();
+                    window.location.href = '/app';
+                } else if (w.status === 429) { alert(typeof MENSAJE_LIMITE!=='undefined'?MENSAJE_LIMITE:'Límite de peticiones alcanzado. Por favor, espera unos segundos.'); }
+                else { alert(data.mensaje); }
+            })
+            .catch(function(err) {
+                clearTimeout(tid); window._enviandoComanda=false;
+                if(err && err.name==='AbortError' && navigator.onLine!==false){ alert('No se confirmó el envío (timeout). Verifique Pedidos activos antes de reintentar.'); return; }
+                if(navigator.onLine===false || (err instanceof TypeError)){
+                    guardarPedidoOffline(payload);
+                    alert('Sin conexión — comanda en cola con clave única, no se duplicará.');
+                    carrito = [];
+                    actualizarCarrito();
+                    window.location.href = '/app';
+                    return;
+                }
+                alert('Error al enviar: '+((err&&err.message)||'servidor'));
+            });
+        }
+    </script>
+</body>
+</html>

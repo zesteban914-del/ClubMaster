@@ -1,0 +1,52 @@
+{
+  "name": "clubmaster",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node Backend/server.js",
+    "postinstall": "echo 'install ok'",
+    "migrate": "node Backend/scripts/migrate.js",
+    "migrate:prod": "NODE_ENV=production node Backend/scripts/migrate.js",
+    "seed": "node Backend/scripts/seed.js",
+    "seed:ventas": "node Backend/scripts/seed-ventas.js",
+    "seed:all": "node Backend/scripts/seedAllData.js",
+    "seed:test-bugs": "node Backend/scripts/seed-test-bugs.js",
+    "clean:dupes": "node Backend/scripts/clean-duplicates.js",
+    "seed:reset": "node Backend/scripts/cleanData.js",
+    "seed:clean": "node Backend/scripts/cleanData.js",
+    "clean": "node Backend/scripts/cleanData.js",
+    "fix:admin": "node Backend/scripts/fix-admin.js",
+    "setup": "npm run migrate && npm run seed",
+    "setup:fresh": "node Backend/scripts/setupFresh.js",
+    "setup:prod": "NODE_ENV=production node Backend/scripts/setupFresh.js",
+    "dev": "node Backend/server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.0",
+    "express-async-errors": "^3.1.1",
+    "express-mysql-session": "^3.0.3",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "mysql2": "^3.24.3",
+    "nodemailer": "^9.1.0",
+    "pdfkit": "^0.20.2",
+    "qrcode": "^1.5.4",
+    "speakeasy": "^2.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

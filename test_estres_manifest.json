@@ -1,0 +1,37 @@
+{
+ "idPedidos": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16
+ ],
+ "mesas": [
+  {
+   "id_mesa": 19,
+   "numero": 1
+  },
+  {
+   "id_mesa": 20,
+   "numero": 2
+  },
+  {
+   "id_mesa": 21,
+   "numero": 3
+  },
+  {
+   "id_mesa": 22,
+   "numero": 4
+  },
+  {
+   "id_mesa": 23,
+   "numero": 5
+  },
+  {
+   "id_mesa": 24,
+   "numero": 6
+  }
+ ],
+ "ts": "2026-09-08T20:29:36.546Z"
+}

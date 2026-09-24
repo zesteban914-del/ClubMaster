@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClubMaster - Restablecer contrasena</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; }
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html { width: 100%; max-width: 100%; overflow-x: hidden; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 40%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+            overflow-y: auto;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            max-width: 200vw;
+            height: 200%;
+            pointer-events: none;
+            background: radial-gradient(circle at 30% 50%, rgba(255,165,0,0.06) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(255,200,50,0.04) 0%, transparent 40%);
+            animation: bgPulse 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgPulse {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(1.1) rotate(3deg); }
+        }
+
+        .reset-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(255,255,255,0.07);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 40px 36px 32px;
+            max-width: 440px;
+            width: 92%;
+            box-shadow: 0 0 40px rgba(255,165,0,0.05);
+        }
+
+        .reset-card h2 {
+            color: #ffc832;
+            font-weight: 800;
+            font-size: 1.4rem;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .reset-card .subtitle {
+            color: rgba(255,255,255,0.45);
+            text-align: center;
+            font-size: 0.82rem;
+            margin-bottom: 26px;
+        }
+
+        .form-label-custom {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .input-group-text {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-right: none;
+            border-radius: 14px 0 0 14px;
+            color: #ffc832;
+        }
+
+        .input-group .form-control {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-left: none;
+            border-radius: 0 14px 14px 0;
+            color: #fff;
+            padding: 10px 14px;
+            height: 46px;
+            font-size: 0.88rem;
+        }
+
+        .input-group .form-control:focus {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,165,0,0.5);
+            box-shadow: 0 0 0 3px rgba(255,165,0,0.1);
+            color: #fff;
+        }
+
+        .input-group .form-control::placeholder { color: rgba(255,255,255,0.25); }
+
+        .toggle-pass { cursor: pointer; border-left: none !important; border-radius: 0 14px 14px 0 !important; }
+
+        .strength-wrap { margin-top: 8px; display: flex; align-items: center; gap: 10px; }
+        .strength-bar { flex: 1; height: 6px; border-radius: 6px; background: rgba(255,255,255,0.1); overflow: hidden; position: relative; }
+        .strength-bar::after { content: ''; position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 6px; transition: all 0.3s; }
+        .strength-bar.weak::after   { width: 25%; background: #ef4444; }
+        .strength-bar.fair::after   { width: 50%; background: #f59e0b; }
+        .strength-bar.good::after   { width: 75%; background: #3b82f6; }
+        .strength-bar.strong::after { width: 100%; background: #10b981; }
+        .strength-label { color: rgba(255,255,255,0.5); font-size: 0.72rem; white-space: nowrap; }
+
+        .match-feedback { margin-top: 6px; font-size: 0.75rem; min-height: 16px; }
+        .match-feedback.match-ok  { color: #10b981; }
+        .match-feedback.match-err { color: #ef4444; }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #ffc832, #f59e0b);
+            border: none;
+            border-radius: 14px;
+            color: #1a1a2e;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 12px;
+            width: 100%;
+            margin-top: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,165,0,0.35);
+        }
+
+        .login-link {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .login-link:hover { color: #ffc832; }
+
+        .alert-custom-success { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; }
+        .alert-custom-danger { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; }
+    </style>
+</head>
+<body>
+
+    <div class="reset-card">
+        <h2><i class="bi bi-shield-lock"></i> ClubMaster</h2>
+        <p class="subtitle">Ingresa tu nueva contrasena</p>
+
+        <form id="formReiniciar" onsubmit="return false;">
+            <div class="mb-3">
+                <label class="form-label-custom">Nueva contrasena *</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input type="password" id="nuevaContrasena" class="form-control" placeholder="Minimo 6 caracteres" required minlength="6" autocomplete="new-password">
+                    <span class="input-group-text toggle-pass" onclick="togglePass('nuevaContrasena','eye1')"><i class="bi bi-eye" id="eye1"></i></span>
+                </div>
+                <div class="strength-wrap">
+                    <div class="strength-bar" id="strengthBar"></div>
+                    <span class="strength-label" id="strengthLabel">Fuerza: --</span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label-custom">Confirmar contrasena *</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                    <input type="password" id="nuevaContrasena2" class="form-control" placeholder="Repite" required minlength="6" autocomplete="new-password">
+                    <span class="input-group-text toggle-pass" onclick="togglePass('nuevaContrasena2','eye2')"><i class="bi bi-eye" id="eye2"></i></span>
+                </div>
+                <div class="match-feedback" id="matchFeedback"></div>
+            </div>
+
+            <button type="submit" class="btn-reset" id="btnReiniciar" onclick="reiniciarContrasena()">
+                <i class="bi bi-check-circle me-1"></i> Restablecer contrasena
+            </button>
+
+            <a href="/" class="login-link"><i class="bi bi-arrow-left me-1"></i> Volver al inicio de sesion</a>
+
+            <div id="mensaje" class="mt-3"></div>
+        </form>
+    </div>
+
+    <script>
+        // Leer el token de la URL (?token=...)
+        var params = new URLSearchParams(window.location.search);
+        var token = params.get('token');
+
+        function togglePass(inputId, iconId) {
+            var inp = document.getElementById(inputId);
+            var icon = document.getElementById(iconId);
+            if (inp.type === 'password') { inp.type = 'text'; icon.className = 'bi bi-eye-slash'; }
+            else { inp.type = 'password'; icon.className = 'bi bi-eye'; }
+        }
+
+        function evaluarFuerza() {
+            var pass = document.getElementById('nuevaContrasena').value;
+            var bar = document.getElementById('strengthBar');
+            var label = document.getElementById('strengthLabel');
+            var score = 0;
+            if (!pass) { bar.className = 'strength-bar'; label.textContent = 'Fuerza: --'; return; }
+            if (pass.length >= 6) score++;
+            if (pass.length >= 10) score++;
+            if (/[A-Z]/.test(pass)) score++;
+            if (/[0-9]/.test(pass)) score++;
+            if (/[^A-Za-z0-9]/.test(pass)) score++;
+            if (score <= 1) { bar.className = 'strength-bar weak'; label.textContent = 'Fuerza: Baja'; }
+            else if (score === 2) { bar.className = 'strength-bar fair'; label.textContent = 'Fuerza: Media'; }
+            else if (score === 3 || score === 4) { bar.className = 'strength-bar good'; label.textContent = 'Fuerza: Buena'; }
+            else { bar.className = 'strength-bar strong'; label.textContent = 'Fuerza: Fuerte'; }
+        }
+
+        function verificarCoincidencia() {
+            var pass = document.getElementById('nuevaContrasena').value;
+            var pass2 = document.getElementById('nuevaContrasena2').value;
+            var fb = document.getElementById('matchFeedback');
+            if (pass2 === '') { fb.className = 'match-feedback'; fb.innerHTML = ''; return; }
+            if (pass === pass2) { fb.className = 'match-feedback match-ok'; fb.innerHTML = '<i class="bi bi-check-circle me-1"></i> Las contrasenas coinciden'; }
+            else { fb.className = 'match-feedback match-err'; fb.innerHTML = '<i class="bi bi-x-circle me-1"></i> Las contrasenas no coinciden'; }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('nuevaContrasena').addEventListener('input', function() { evaluarFuerza(); verificarCoincidencia(); });
+            document.getElementById('nuevaContrasena2').addEventListener('input', verificarCoincidencia);
+
+            if (!token) {
+                document.getElementById('mensaje').innerHTML = '<div class="alert alert-custom-danger">El enlace es invalido o esta incompleto. Solicita uno nuevo.</div>';
+            }
+        });
+
+        function reiniciarContrasena() {
+            var pass = document.getElementById('nuevaContrasena').value;
+            var pass2 = document.getElementById('nuevaContrasena2').value;
+            var msg = document.getElementById('mensaje');
+
+            if (!token) {
+                msg.innerHTML = '<div class="alert alert-custom-danger">El enlace es invalido. Solicita uno nuevo.</div>';
+                return;
+            }
+            if (pass !== pass2) {
+                msg.innerHTML = '<div class="alert alert-custom-danger">Las contrasenas no coinciden.</div>';
+                return;
+            }
+            if (pass.length < 6) {
+                msg.innerHTML = '<div class="alert alert-custom-danger">La contrasena debe tener al menos 6 caracteres.</div>';
+                return;
+            }
+
+            var btn = document.getElementById('btnReiniciar');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Procesando...';
+
+            fetch('/api/reiniciar-contrasena', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token, nuevaContrasena: pass })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Restablecer contrasena';
+                if (data.exito) {
+                    msg.innerHTML = '<div class="alert alert-custom-success"><i class="bi bi-check-circle me-1"></i> ' + data.mensaje + '</div>';
+                    setTimeout(function() { window.location.href = '/'; }, 2000);
+                } else {
+                    msg.innerHTML = '<div class="alert alert-custom-danger">' + (data.mensaje || 'No se pudo restablecer') + '</div>';
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Restablecer contrasena';
+                msg.innerHTML = '<div class="alert alert-custom-danger">No se pudo conectar con el servidor.</div>';
+            });
+        }
+    </script>
+</body>
+</html>

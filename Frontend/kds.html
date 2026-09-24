@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KDS - Cocina/Barra</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<style>html,body{width:100%;max-width:100%;overflow-x:hidden}body{background:#0f172a;color:#f8fafc}.kds-card{background:#1e293b;border:1px solid #334155;border-radius:12px;min-width:0}.kds-tiempo{font-weight:800}.kds-alerta{border-color:#ef4444!important}.kds-mesero{display:inline-flex;align-items:center;gap:5px;background:#1e3a8a;color:#bfdbfe;border:1px solid #3b82f6;border-radius:20px;padding:2px 10px;font-size:.75rem;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#kdsGrid{max-width:100%}@media(max-width:480px){#kdsFiltro{max-width:100%!important;flex:1;min-width:0}}</style>
+</head>
+<body>
+<div class="container-fluid p-3" style="max-width:100%;overflow-x:hidden">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<h4 class="m-0"><i class="bi bi-fire me-2"></i>KDS - Pendientes <span id="kdsCount" class="badge bg-warning text-dark ms-2">0</span></h4>
+<div class="d-flex gap-2 align-items-center">
+<input id="kdsFiltro" class="form-control form-control-sm" style="max-width:220px" placeholder="Filtrar producto/mesa/mesero..." oninput="kdsRender()">
+<button class="btn btn-sm btn-outline-light" onclick="kdsCargar()">Actualizar</button>
+<span id="kdsEstado" class="small text-secondary">polling 10s</span>
+</div>
+</div>
+<div id="kdsGrid" class="row g-3"></div>
+</div>
+<script src="js/escape-html.js"></script>
+<script>
+var KDS_ITEMS=[];var KDS_TIMER=null;
+function kdsEsc(s){try{if(typeof escapeHTML==='function')return escapeHTML(s);}catch(e){}return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function kdsCargar(){if(document.hidden)return;fetch('/api/kds/pendientes',{credentials:'include'}).then(function(r){if(r.status===429)throw {status:429};return r.json();}).then(function(d){if(d.success){KDS_ITEMS=d.items||[];kdsRender();document.getElementById('kdsEstado').textContent='act '+new Date().toLocaleTimeString();}}).catch(function(e){document.getElementById('kdsEstado').textContent=(e&&e.status===429)?'limite alcanzado, reintentando...':'sin conexion';});}
+function kdsRender(){var f=(document.getElementById('kdsFiltro').value||'').toLowerCase();var grupos={};KDS_ITEMS.forEach(function(it){var key=it.id_pedido;if(!grupos[key])grupos[key]={id_pedido:it.id_pedido,mesa:it.mesa_numero,zona:it.zona,minutos:it.minutos,ts:it.timestamp_pedido,mesero:it.mesero_nombre||'',items:[]};grupos[key].items.push(it);if(it.mesero_nombre&&!grupos[key].mesero)grupos[key].mesero=it.mesero_nombre;});var ids=Object.keys(grupos);var grid=document.getElementById('kdsGrid');document.getElementById('kdsCount').textContent=KDS_ITEMS.length;grid.innerHTML='';if(!ids.length){grid.innerHTML='<div class="col-12 text-center text-secondary py-5">Sin pedidos pendientes</div>';return;}ids.forEach(function(id){var g=grupos[id];var div=document.createElement('div');div.className='col-12 col-md-6 col-lg-4';var alerta=Number(g.minutos)>15?' kds-alerta':'';var card=document.createElement('div');card.className='kds-card p-3'+alerta;var h=document.createElement('div');h.className='d-flex justify-content-between align-items-center mb-2';var t=document.createElement('strong');t.textContent='Mesa '+g.mesa+' · Pedido #'+g.id_pedido;var tm=document.createElement('span');tm.className='kds-tiempo badge '+(Number(g.minutos)>15?'bg-danger':'bg-info text-dark');tm.textContent=g.minutos+' min';h.appendChild(t);h.appendChild(tm);card.appendChild(h);var sub=document.createElement('div');sub.className='small text-secondary mb-2';sub.textContent=(g.zona||'')+' · '+g.ts;card.appendChild(sub);var mRow=document.createElement('div');mRow.className='mb-2';mRow.innerHTML='<span class="kds-mesero"><i class="bi bi-person-fill"></i> '+(kdsEsc(g.mesero||'Sin asignar'))+'</span>';card.appendChild(mRow);g.items.forEach(function(it){if(f&&(String(it.producto_nombre||'').toLowerCase().indexOf(f)===-1&&String(g.mesa).indexOf(f)===-1&&String(g.mesero||'').toLowerCase().indexOf(f)===-1))return;var row=document.createElement('div');row.className='d-flex justify-content-between align-items-center border-top py-2';var left=document.createElement('div');var nm=document.createElement('div');nm.style.fontWeight='700';nm.textContent=it.cantidad+'x '+(it.producto_nombre||'');left.appendChild(nm);if(it.observaciones||it.presentacion){var ob=document.createElement('div');ob.className='small text-warning';ob.textContent=[it.presentacion,it.observaciones].filter(Boolean).join(' · ');left.appendChild(ob);}row.appendChild(left);var btn=document.createElement('button');btn.className='btn btn-sm btn-success';btn.textContent='Listo';btn.onclick=(function(det){return function(){kdsListo(det,this);};})(it.id_detalle);row.appendChild(btn);card.appendChild(row);});div.appendChild(card);grid.appendChild(div);});}
+function kdsListo(id,btn){btn.disabled=true;fetch('/api/kds/detalle/'+id+'/listo',{method:'POST',credentials:'include'}).then(function(r){return r.json();}).then(function(){kdsCargar();}).catch(function(){btn.disabled=false;});}
+kdsCargar();if(KDS_TIMER)clearInterval(KDS_TIMER);KDS_TIMER=setInterval(function(){if(!document.hidden)kdsCargar();},10000);document.addEventListener('visibilitychange',function(){if(!document.hidden)kdsCargar();});window.addEventListener('pagehide',function(){if(KDS_TIMER)clearInterval(KDS_TIMER);});window.addEventListener('beforeunload',function(){if(KDS_TIMER)clearInterval(KDS_TIMER);});
+</script>
+</body>
+</html>

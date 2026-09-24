@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClubMaster - Centro de Control</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20260513">
+    <style>
+      #demoBanner{height:36px;min-height:36px;max-height:40px;margin:-28px -32px 16px -32px;padding:0 16px;background:rgba(245,158,11,0.10);background-color:#FFFBEB;border-bottom:1px solid #FCD34D;color:#92400E;font-weight:700;font-size:.78rem;letter-spacing:.02em;align-items:center;gap:12px;justify-content:space-between;flex-direction:row;box-sizing:border-box;flex-shrink:0;}
+      #demoBanner span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      @media(max-width:768px){#demoBanner{margin:-16px -14px 12px -14px !important;padding:0 12px !important;font-size:.72rem !important;max-width:none !important;width:auto !important;}}
+      @media(max-width:480px){#demoBanner{margin:-14px -12px 10px -12px !important;}}
+      #main-content{flex:1;width:100%;min-width:0;}
+      body.demo-active #main-content{padding-top:0}
+    </style>
+</head>
+<body>
+
+    <!-- TOPBAR MOVIL (solo <768px): hamburguesa + marca -->
+    <header id="mobileTopbar">
+        <button id="btnMenuMovil" aria-label="Abrir menú" onclick="toggleSidebarMovil(true)">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="mt-brand">
+            <span class="mt-icon">CM</span>
+            <span class="mt-name">ClubMaster</span>
+        </div>
+        <button id="btnRefreshMovil" aria-label="Actualizar" onclick="cargarMesas()">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </header>
+    <div id="sidebarOverlay" onclick="toggleSidebarMovil(false)"></div>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">CM</div>
+            <div>
+                <h5>ClubMaster</h5>
+                <small>Centro de Control</small>
+            </div>
+        </div>
+        <ul class="nav nav-pills flex-column">
+            <li class="nav-item">
+                <a href="#" class="nav-link active" onclick="cargarMesas()" id="navMesas">
+                    <i class="bi bi-grid-3x3-gap"></i> <span>Mesas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarInventario()" id="navInventario">
+                    <i class="bi bi-box-seam"></i> <span>Inventario</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarAnalisisInventario()" id="navAnalisisInventario">
+                    <i class="bi bi-graph-up-arrow"></i> <span>Análisis de Inventario</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarConfiguracion()" id="navConfiguracion">
+                    <i class="bi bi-gear-fill"></i> <span>Configuraci&oacute;n</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarConfiguracionInventario()" id="navConfigInventario" style="opacity:.7">
+                    <i class="bi bi-sliders2"></i> <span>Config. Inventario</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarCaja()" id="navCaja">
+                    <i class="bi bi-cash-register"></i> <span>Caja / Jornada</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="cargarPanelFinanzas()" id="navFinanzas">
+                    <i class="bi bi-bank"></i> <span>Finanzas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarProveedores()" id="navProveedores">
+                    <i class="bi bi-truck"></i> <span>Proveedores</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarCompras()" id="navCompras">
+                    <i class="bi bi-bag-check"></i> <span>Compras</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarUsuarios()" id="navUsuarios">
+                    <i class="bi bi-people"></i> <span>Usuarios</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarReportes()" id="navReportes">
+                    <i class="bi bi-bar-chart-line"></i> <span>Reportes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarFacturacion()" id="navFacturacion">
+                    <i class="bi bi-receipt-cutoff"></i> <span>Facturas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarMermas()" id="navMermas">
+                    <i class="bi bi-exclamation-triangle"></i> <span>Mermas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarDevoluciones()" id="navDevoluciones">
+                    <i class="bi bi-arrow-return-left"></i> <span>Devoluciones</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarSpeedBar()" id="navSpeedBar">
+                    <i class="bi bi-lightning"></i> <span>Speed Bar</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarSocios()" id="navSocios">
+                    <i class="bi bi-person-vcard"></i> <span>Clientes / Socios</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="iniciarVales()" id="navVales">
+                    <i class="bi bi-wallet2"></i> <span>Cartera / Vales</span>
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
+                <div class="user-info">
+                    <div class="user-name" id="nombreUsuario">Usuario</div>
+                    <div class="user-role">Administrador</div>
+                </div>
+            </div>
+            <button class="btn-sidebar-logout" onclick="cerrarSesion()">
+                <i class="bi bi-box-arrow-left"></i> <span>Cerrar Sesion</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- AREA PRINCIPAL -->
+    <div id="main-content">
+        <div id="demoBanner" style="display:none;">
+            <span style="display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;"><i class="bi bi-mortarboard" style="font-size:1rem;color:#D97706;"></i> MODO ENTRENAMIENTO — Datos simulados</span>
+            <span style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+              <button onclick="demoReset()" style="background:#F59E0B;color:#fff;border:none;padding:5px 10px;border-radius:999px;font-weight:700;font-size:.70rem;line-height:1;cursor:pointer;white-space:nowrap;">↻ Reiniciar demo</button>
+              <button onclick="demoSalir()" style="background:#fff;color:#92400E;border:1px solid #FDE68A;padding:5px 10px;border-radius:999px;font-weight:700;font-size:.70rem;line-height:1;cursor:pointer;white-space:nowrap;">Salir</button>
+            </span>
+        </div>
+        <div class="page-header">
+            <h2><i class="bi bi-speedometer2"></i>Centro de Control</h2>
+            <div class="page-header-right">
+                <span class="badge" id="badgeOffline" style="display:none;padding:6px 12px;border-radius:20px;font-weight:600;font-size:0.78rem;align-items:center;gap:4px">
+                    <i class="bi bi-wifi-off"></i> <span id="countOffline">0</span> pendientes
+                </span>
+                <span class="jornada-badge jornada-cerrada" id="jornadaBadge">
+                    <span class="jd-dot"></span> CERRADA
+                </span>
+                <button class="btn-refresh" onclick="cargarMesas()" id="btnRefresh">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar
+                </button>
+            </div>
+        </div>
+
+        <div id="contenedorAlertas"></div>
+
+        <!-- KPI ROW -->
+        <div class="kpi-row" id="contenedorKPI">
+            <div class="kpi-card kpi-ocupacion">
+                <div class="kpi-top">
+                    <div class="kpi-label">Ocupacion</div>
+                    <div class="kpi-icon"><i class="bi bi-pie-chart"></i></div>
+                </div>
+                <div class="kpi-value" id="kpiOcupacion">0 / 0</div>
+                <div class="kpi-sub">mesas ocupadas / total</div>
+                <div class="kpi-progress">
+                    <div class="kpi-progress-bar"><div class="kpi-progress-fill fill-blue" id="kpiOcupacionBar" style="width:0%"></div></div>
+                    <div class="kpi-progress-label"><span id="kpiOcupacionPct">0%</span><span id="kpiOcupacionDisp">0 disponibles</span></div>
+                </div>
+            </div>
+            <div class="kpi-card kpi-clientes">
+                <div class="kpi-top">
+                    <div class="kpi-label">Clientes Ahora</div>
+                    <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+                </div>
+                <div class="kpi-value" id="kpiClientes">0</div>
+                <div class="kpi-sub">aforo actual en el local</div>
+            </div>
+            <div class="kpi-card kpi-comandas">
+                <div class="kpi-top">
+                    <div class="kpi-label">Comandas Activas</div>
+                    <div class="kpi-icon"><i class="bi bi-receipt"></i></div>
+                </div>
+                <div class="kpi-value" id="kpiComandas">0</div>
+                <div class="kpi-sub">pedidos en curso</div>
+            </div>
+            <div class="kpi-card kpi-consumo">
+                <div class="kpi-top">
+                    <div class="kpi-label">Consumo Noche</div>
+                    <div class="kpi-icon"><i class="bi bi-currency-dollar"></i></div>
+                </div>
+                <div class="kpi-value" id="kpiConsumo">$0</div>
+                <div class="kpi-sub">total facturado hoy</div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR: Search + Admin + Filters -->
+        <div class="toolbar-row">
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" id="buscadorMesas" placeholder="Buscar mesa por numero..." oninput="filtrarMesas()">
+            </div>
+            <button class="btn-admin-mesas" onclick="abrirModalMesaAdmin()" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;padding:9px 16px;border-radius:10px;font-weight:600;display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap"><i class="bi bi-gear-fill"></i>Gestionar Mesas</button>
+            <div class="filter-pills" id="filterPills">
+                <button class="filter-pill active" data-filter="Todas" onclick="aplicarFiltro('Todas', this)">
+                    Todas <span class="pill-count" id="countTodas">0</span>
+                </button>
+                <button class="filter-pill" data-filter="Disponible" onclick="aplicarFiltro('Disponible', this)">
+                    <i class="bi bi-check-circle-fill" style="color:#22c55e"></i> Disponibles <span class="pill-count" id="countDisponibles">0</span>
+                </button>
+                <button class="filter-pill" data-filter="Ocupada" onclick="aplicarFiltro('Ocupada', this)">
+                    <i class="bi bi-person-fill" style="color:#ef4444"></i> Ocupadas <span class="pill-count" id="countOcupadas">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- CONTENEDOR DE ZONAS (se llena dinamicamente) -->
+        <div id="contenedorZonas"></div>
+    </div>
+
+    <!-- FLOATING ACTION BAR — SCOPED ONLY TO MESAS/COMANDERO VIEW -->
+    <div class="fab-container" id="fabContainer" style="display:none">
+        <div class="fab-menu" id="fabMenu">
+            <button class="fab-item fab-precuenta" onclick="accionPreCuenta()">
+                <span class="fab-item-label">Imprimir Pre-cuenta</span>
+                <i class="bi bi-printer"></i>
+            </button>
+            <button class="fab-item fab-llamado" onclick="accionLlamadoMesero()">
+                <span class="fab-item-label">Llamar Mesero</span>
+                <i class="bi bi-bell"></i>
+            </button>
+        </div>
+        <button class="fab-toggle" id="fabToggle" onclick="toggleFab()">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+    </div>
+
+    <!-- MODAL COMANDERO -->
+    <div class="modal fade" id="modalComandero" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloMesaModal">Tomar Pedido - Mesa</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <div class="position-relative mb-3">
+                                <i class="bi bi-search position-absolute" style="top:12px;left:14px;color:#94a3b8"></i>
+                                <input type="text" id="buscadorModal" class="form-control" style="padding-left:40px;border-radius:10px;border:1px solid #e2e8f0" placeholder="Buscar producto..." oninput="filtrarProductos()">
+                            </div>
+                            <div id="catQuickContainer" class="mb-2 d-flex flex-wrap gap-1" style="min-height:2px"></div>
+                            <div class="row g-2" id="contenedorProductosModal"></div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="card" style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
+                                <div style="padding:16px 20px;background:#0f172a;color:#f8fafc;font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:8px">
+                                    <i class="bi bi-receipt"></i> Comanda Actual
+                                </div>
+                                <div class="card-body p-0">
+                                    <ul class="list-group list-group-flush" id="listaCarritoModal" style="max-height:300px;overflow-y:auto"></ul>
+                                </div>
+                                <div class="p-3" style="border-top:1px solid #e2e8f0;background:#f8fafc">
+                                    <div class="mb-2" id="meseroAutoInfo" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px">
+                                        <i class="bi bi-person-badge" style="color:#2563eb"></i>
+                                        <div>
+                                            <div style="font-size:.70rem;font-weight:700;color:#475569;text-transform:uppercase">Mesero responsable</div>
+                                            <div id="meseroAutoNombre" style="font-size:.85rem;font-weight:700;color:#1e40af">--</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span style="font-weight:700;color:#475569">Total</span>
+                                        <span style="font-size:1.3rem;font-weight:800;color:#0f172a" id="txtTotalModal">$0</span>
+                                    </div>
+                                    <div style="display:flex;gap:8px">
+                                        <button class="btn-custom-action" id="btnLimpiarBorrador" style="flex:1;padding:10px;background:#fff;color:#64748b;border:1px solid #e2e8f0;opacity:.65" onclick="limpiarBorrador()" disabled>
+                                            <i class="bi bi-box-arrow-left me-1"></i> Limpiar / Salir
+                                        </button>
+                                        <button class="btn-custom-action btn-pedir" id="btnEnviarPedido" style="flex:2;padding:12px" onclick="confirmarPedido()" disabled>
+                                            <i class="bi bi-send-fill me-1"></i> Enviar Pedido
+                                        </button>
+                                    </div>
+                                    <div id="contenedorPedidosActivos" style="margin-top:14px;display:block">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;color:#0f172a;font-size:.82rem;margin-bottom:6px;border-top:1px solid #e2e8f0;padding-top:10px">
+                                            <span><i class="bi bi-receipt-cutoff me-1"></i> Pedidos Activos en Mesa <span id="badgePedidosActivos" class="badge bg-warning text-dark ms-1" style="font-size:.70rem">0</span></span>
+                                            <button class="btn btn-sm" id="btnCancelarPedido" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;padding:4px 10px;font-weight:700;font-size:.72rem" onclick="solicitarCancelacionMesa()">
+                                                <i class="bi bi-x-circle me-1"></i> 🚫 Cancelar Pedido
+                                            </button>
+                                        </div>
+                                        <div id="listaPedidosActivos" style="max-height:180px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:8px;text-align:center;color:#94a3b8;font-size:.82rem">Cargando pedidos activos...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL AUTORIZACION CANCELACION -->
+    <div class="modal fade" id="modalCancelarAuth" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+            <div class="modal-content" style="border-radius:16px;overflow:hidden">
+                <div class="modal-header" style="background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none">
+                    <h5 class="modal-title" style="font-weight:800"><i class="bi bi-shield-lock me-2"></i>Autorizar Anulación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="background:#f8fafc">
+                    <div id="cancelAuthInfo" style="font-size:.82rem;color:#334155;margin-bottom:12px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px"></div>
+                    <div class="mb-3">
+                        <label style="font-size:.75rem;font-weight:700;color:#475569;text-transform:uppercase">Motivo de Anulación *</label>
+                        <select id="cancelMotivo" class="form-select" style="border-radius:10px">
+                            <option value="">Seleccione motivo...</option>
+                            <option value="Error de digitación">Error de digitación</option>
+                            <option value="Cliente se retiró">Cliente se retiró</option>
+                            <option value="Producto no disponible">Producto no disponible</option>
+                            <option value="Merma / Derrame">Merma / Derrame</option>
+                            <option value="Cortesía / Obsequio">Cortesía / Obsequio</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                        <input type="text" id="cancelMotivoOtro" class="form-control mt-2" style="display:none;border-radius:10px" placeholder="Especifique motivo...">
+                    </div>
+                    <div class="mb-2" id="cancelPinGroup">
+                        <label style="font-size:.75rem;font-weight:700;color:#475569;text-transform:uppercase">PIN Maestro Gerente *</label>
+                        <input type="password" id="cancelPin" class="form-control" style="border-radius:10px;letter-spacing:.15em;text-align:center" placeholder="••••" maxlength="6">
+                        <small style="color:#64748b;font-size:.72rem">Requerido si no tiene permiso can_cancel_orders</small>
+                    </div>
+                    <div id="cancelPermInfo" style="font-size:.75rem;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px;display:none"><i class="bi bi-check-circle me-1"></i> Tienes permiso can_cancel_orders — se procesará sin PIN</div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e2e8f0">
+                    <button type="button" class="btn btn-light" style="border-radius:8px" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-danger" style="border-radius:8px;font-weight:700" onclick="confirmarCancelacionAuth()"><i class="bi bi-x-circle me-1"></i> Confirmar Anulación</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE FACTURACION -->
+    <div class="modal fade" id="modalFacturacion" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloFacturaModal"><i class="bi bi-receipt me-2"></i>Cuenta Mesa</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="background:#f8fafc">
+                    <!-- Detalle de consumo con checkboxes -->
+                    <div class="mb-3">
+                        <div style="padding:12px 16px;background:#0f172a;color:#f8fafc;border-radius:10px;font-weight:700;font-size:0.85rem;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+                            <i class="bi bi-list-check"></i> Detalle de Consumo - Seleccione items por cobrar
+                        </div>
+                        <div id="listaItemsFactura" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden"></div>
+                        <div class="d-flex justify-content-between align-items-center mt-2" style="padding:10px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">
+                            <span style="font-weight:700;color:#166534">Total Cuenta</span>
+                            <span style="font-size:1.2rem;font-weight:800;color:#15803d" id="txtTotalFactura">$0</span>
+                        </div>
+                    </div>
+
+                    <!-- Resumen de grupos de pago -->
+                    <div class="mb-3" id="contenedorPagos">
+                        <div style="padding:10px 16px;background:#1e293b;color:#f8fafc;border-radius:10px 10px 0 0;font-weight:700;font-size:0.8rem;display:flex;align-items:center;justify-content:space-between">
+                            <span><i class="bi bi-credit-card me-1"></i> Grupos de Pago</span>
+                            <span id="txtRestante" style="color:#fbbf24;font-size:0.82rem">Por cobrar: $0</span>
+                        </div>
+                        <div id="listaPagosFactura" style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;overflow:hidden"></div>
+                    </div>
+
+                    <!-- Boton agregar grupo -->
+                    <button class="btn btn-sm w-100 mb-3" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;font-weight:600" onclick="agregarGrupoPago()">
+                        <i class="bi bi-plus-circle me-1"></i> Agregar Metodo de Pago
+                    </button>
+
+                    <!-- Resumen final -->
+                    <div id="resumenFacturacion" style="display:none;padding:14px 16px;background:#0f172a;border-radius:10px;color:#f8fafc">
+                        <div class="d-flex justify-content-between mb-2" style="font-size:0.85rem">
+                            <span>Total Cuenta:</span><span id="resumenTotal" style="font-weight:700">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2" style="font-size:0.85rem">
+                            <span>Total Cubierto:</span><span id="resumenPagado" style="font-weight:700;color:#34d399">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2" style="font-size:0.8rem">
+                            <span style="color:#94a3b8">Descuentos:</span><span id="resumenDescuentos" style="font-weight:600;color:#fbbf24">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2" style="font-size:0.8rem">
+                            <span style="color:#94a3b8">Propina:</span><span id="resumenPropina" style="font-weight:600;color:#c4b5fd">$0</span>
+                        </div>
+                        <div style="height:1px;background:#334155;margin:8px 0"></div>
+                        <div class="d-flex justify-content-between" style="font-size:1rem">
+                            <span style="font-weight:800">Pendiente:</span>
+                            <span id="resumenPendiente" style="font-weight:800;color:#fbbf24">$0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e2e8f0;background:#fff">
+                    <button type="button" class="btn btn-light" style="border-radius:8px;font-weight:600" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn-custom-action btn-cobrar" id="btnConfirmarCobro" style="width:auto;padding:10px 24px" onclick="procesarCobroDividido()">
+                        <i class="bi bi-check-lg me-1"></i> Confirmar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PRE-CUENTA -->
+    <div class="modal fade" id="modalPreCuenta" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-printer me-2"></i>Pre-Cuenta</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="background:#f8fafc">
+                    <div id="contenidoPreCuenta">
+                        <div class="text-center py-3 text-muted">Seleccione una mesa ocupada primero.</div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e2e8f0;background:#fff">
+                    <button type="button" class="btn btn-light" style="border-radius:8px;font-weight:600" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMACION / FACTURA DE VENTA -->
+    <div class="modal fade" id="modalConfirmacionFactura" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none;box-shadow:0 25px 60px rgba(0,0,0,.3)">
+                <div style="background:linear-gradient(135deg,#059669,#10b981);padding:20px 24px;color:#fff;text-align:center">
+                    <div id="iconoExitoFactura" style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:1.8rem">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                    <h5 style="margin:0;font-weight:800;font-size:1.1rem" id="tituloConfirmacionFactura">Pago Confirmado</h5>
+                    <p style="margin:4px 0 0;font-size:0.82rem;opacity:.85" id="subtituloConfirmacionFactura">Mesa liberada correctamente</p>
+                </div>
+                <div class="modal-body" style="padding:0;background:#fff">
+                    <div id="contenidoFacturaTicket" style="max-height:400px;overflow-y:auto"></div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;gap:8px;justify-content:center;padding:14px 20px">
+                    <button type="button" class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;font-weight:600;padding:8px 16px" onclick="imprimirFactura()">
+                        <i class="bi bi-printer me-1"></i> Imprimir
+                    </button>
+                    <button type="button" class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;font-weight:600;padding:8px 16px" onclick="descargarFactura()">
+                        <i class="bi bi-download me-1"></i> Descargar
+                    </button>
+                    <button type="button" class="btn btn-sm" style="background:#0f172a;color:#f8fafc;border:none;border-radius:8px;font-weight:700;padding:8px 20px" data-bs-dismiss="modal" onclick="cerrarConfirmacionFactura()">
+                        Finalizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB BAR MOVIL (solo <768px): accesos rapidos + "Mas" abre el drawer -->
+    <nav id="mobileTabbar" aria-label="Navegacion movil">
+        <button class="mtab active" data-mtab="mesas" onclick="irSeccionMovil('mesas', this)">
+            <i class="bi bi-grid-3x3-gap"></i><span>Mesas</span>
+        </button>
+        <button class="mtab" data-mtab="caja" onclick="irSeccionMovil('caja', this)">
+            <i class="bi bi-cash-register"></i><span>Caja</span>
+        </button>
+        <button class="mtab" data-mtab="inventario" onclick="irSeccionMovil('inventario', this)">
+            <i class="bi bi-box-seam"></i><span>Inventario</span>
+        </button>
+        <button class="mtab" data-mtab="reportes" onclick="irSeccionMovil('reportes', this)">
+            <i class="bi bi-bar-chart-line"></i><span>Reportes</span>
+        </button>
+        <button class="mtab" data-mtab="mas" onclick="toggleSidebarMovil(true)">
+            <i class="bi bi-grid"></i><span>Más</span>
+        </button>
+    </nav>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toastContainer" style="position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px"></div>
+    <script>
+        function toggleSidebarMovil(abrir) {
+            var sb = document.getElementById('sidebar');
+            var ov = document.getElementById('sidebarOverlay');
+            var btn = document.getElementById('btnMenuMovil');
+            var show = (typeof abrir === 'boolean') ? abrir : !document.body.classList.contains('sidebar-open');
+            document.body.classList.toggle('sidebar-open', show);
+            if (sb) sb.classList.toggle('open', show);
+            if (ov) ov.classList.toggle('show', show);
+            if (btn) btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+            try { document.body.style.overflow = show ? 'hidden' : ''; } catch (e) {}
+        }
+        function irSeccionMovil(seccion, el) {
+            try {
+                document.querySelectorAll('#mobileTabbar .mtab').forEach(function(b) { b.classList.remove('active'); });
+                if (el) el.classList.add('active');
+                toggleSidebarMovil(false);
+                if (seccion === 'mesas' && typeof cargarMesas === 'function') cargarMesas();
+                else if (seccion === 'caja' && typeof iniciarCaja === 'function') iniciarCaja();
+                else if (seccion === 'inventario' && typeof iniciarInventario === 'function') iniciarInventario();
+                else if (seccion === 'reportes' && typeof iniciarReportes === 'function') iniciarReportes();
+            } catch (e) {}
+        }
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth > 768) return;
+            var sb = document.getElementById('sidebar');
+            if (!sb || !document.body.classList.contains('sidebar-open')) return;
+            if (sb.contains(e.target)) {
+                var link = e.target.closest ? e.target.closest('.nav-link') : null;
+                if (link) toggleSidebarMovil(false);
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') toggleSidebarMovil(false);
+        });
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) toggleSidebarMovil(false);
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/escape-html.js"></script>
+    <script src="js/delegate.js"></script>
+    <script src="js/stock-alerts.js"></script>
+    <script src="js/deshboard.js?v=20260920"></script>
+    <script src="js/meseroMovil.js"></script>
+    <script src="js/caja.js?v=20260913"></script>
+    <script src="js/inventario.js"></script>
+    <script src="js/analisis_inventario.js"></script>
+    <script src="js/configuracion_inventario.js"></script>
+    <script src="js/configuracion.js"></script>
+    <script src="js/proveedores.js?v=20260916"></script>
+    <script src="js/compras.js?v=20260916"></script>
+    <script src="js/usuarios.js?v=20260915"></script>
+    <script src="js/reportes.js?v=20260922wa2"></script>
+    <script src="js/facturacion.js"></script>
+    <script src="js/mermas.js"></script>
+    <script src="js/devoluciones.js?v=20260916"></script>
+    <script src="js/speedBar.js"></script>
+    <script src="js/vales.js"></script>
+    <script src="js/comanda-print.js"></script>
+    <script src="js/auditoria.js"></script>
+    <script src="js/permisos.js?v=20260918"></script>
+</body>
+</html>
