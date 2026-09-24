@@ -21,6 +21,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Vercel build local
+.vercel/
+
 Backend/backups/
 backups/
 *.sql
