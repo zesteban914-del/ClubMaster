@@ -1,0 +1,9 @@
+# No subir a Vercel: credenciales locales ni dumps/backups
+Backend/.env
+.env
+.env.*
+backups
+*.log
+test_*.js
+test_*.json
+docs

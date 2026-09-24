@@ -4,6 +4,7 @@
 // fallidos y control de acceso por rol (RBAC).
 // =========================================================
 const session = require('express-session');
+const { buildPoolConfig } = require('../config/database');
 
 let MySQLStore = null;
 try { MySQLStore = require('express-mysql-session')(session); } catch (e) { MySQLStore = null; }
@@ -18,17 +19,15 @@ function getSessionStore() {
     _storeInitTried = true;
     if (!MySQLStore) { console.warn('[session] express-mysql-session no instalado, usando MemoryStore'); return null; }
     try {
+        // Reutiliza buildPoolConfig para que SSL (DB_SSL / DATABASE_URL) aplica
+        // también a las sesiones; sin esto falla contra BDs en la nube que exigen SSL.
         let opts = null;
-        if (process.env.DATABASE_URL) {
-            try {
-                const u = new URL(process.env.DATABASE_URL);
-                opts = { host: u.hostname, port: u.port ? Number(u.port) : 3306, user: decodeURIComponent(u.username), password: decodeURIComponent(u.password), database: u.pathname.replace(/^\//, '').split('?')[0] };
-            } catch (e) { opts = null; }
-        }
-        if (!opts) {
-            opts = { host: process.env.DB_HOST || 'localhost', port: Number(process.env.DB_PORT || 3306), user: process.env.DB_USER || 'root', password: process.env.DB_PASSWORD || '', database: process.env.DB_NAME || 'discoteca_db' };
-        }
-        const storeOpts = Object.assign({}, opts, { createDatabaseTable: true, schema: { tableName: 'sessions', columnNames: { session_id: 'session_id', expires: 'expires', data: 'data' } }, expiration: 1000 * 60 * 60 * 8, checkExpirationInterval: 15 * 60 * 1000 });
+        try {
+            const c = buildPoolConfig('REAL');
+            opts = { host: c.host, port: c.port || 3306, user: c.user, password: c.password || '', database: c.database };
+            if (c.ssl) opts.ssl = c.ssl;
+        } catch (e) { opts = null; }
+        const storeOpts = Object.assign({}, opts, { createDatabaseTable: true, schema: { tableName: 'sessions', columnNames: { session_id: 'session_id', expires: 'expires', data: 'data' } }, expiration: 1000 * 60 * 60 * 8, checkExpirationInterval: process.env.VERCEL ? 0 : 15 * 60 * 1000 });
         _sessionStore = new MySQLStore(storeOpts);
         _sessionStore.on('error', function (e) { console.error('[session-store]', e.message); });
         return _sessionStore;
@@ -110,14 +109,18 @@ function registrarIntentoExitoso(req) {
 }
 
 // Limpieza periodica de registros antiguos (evita fuga de memoria).
-setInterval(() => {
-    const ahora = Date.now();
-    for (const [ip, reg] of intentosIP.entries()) {
-        const bloqueoExpirado = reg.bloqueadoHasta && reg.bloqueadoHasta <= ahora;
-        const inactivo = (ahora - reg.ultimoAcceso) > 60 * 60 * 1000;
-        if (bloqueoExpirado || inactivo) intentosIP.delete(ip);
-    }
-}, 60 * 1000);
+// En serverless (Vercel) no se usa: el estado es por instancia y los timers
+// mantienen vivo el worker innecesariamente.
+if (!process.env.VERCEL) {
+    setInterval(() => {
+        const ahora = Date.now();
+        for (const [ip, reg] of intentosIP.entries()) {
+            const bloqueoExpirado = reg.bloqueadoHasta && reg.bloqueadoHasta <= ahora;
+            const inactivo = (ahora - reg.ultimoAcceso) > 60 * 60 * 1000;
+            if (bloqueoExpirado || inactivo) intentosIP.delete(ip);
+        }
+    }, 60 * 1000);
+}
 
 // ------------------------------------------------------------------
 // Autenticacion: solo usuarios con sesion valida

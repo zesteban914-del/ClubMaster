@@ -1,6 +1,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
+const { sslConfigFor } = require('../config/database');
 async function apply() {
   const adminCfg = {
     host: process.env.DB_ADMIN_HOST || process.env.DB_HOST || 'localhost',
@@ -9,6 +10,8 @@ async function apply() {
     password: process.env.DB_ADMIN_PASSWORD,
     database: process.env.DB_NAME || 'discoteca_db'
   };
+  const ssl = sslConfigFor(adminCfg.host, 'REAL');
+  if (ssl) adminCfg.ssl = ssl;
   const appUser = process.env.DB_USER || 'root';
   const appHost = process.env.DB_APP_HOST || '%';
   if (!adminCfg.user || !adminCfg.password) {

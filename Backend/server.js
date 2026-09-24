@@ -123,7 +123,18 @@ app.use('/api', function(req, res){
     res.status(404).json({ success:false, mensaje:'Endpoint no encontrado: '+req.method+' '+req.originalUrl });
 });
 
-app.use(express.static(path.join(__dirname, '../Frontend')));
+// Vercel serverless: dentro de la funcion, la ruta de Frontend se resuelve
+// distinto segun como el builder empaqueta el proyecto; probamos varias raices.
+const candidatasFrontend = [
+  path.join(__dirname, '../Frontend'),
+  path.join(process.cwd(), 'Frontend'),
+  path.join(process.cwd(), '../Frontend'),
+  path.join(__dirname, '../../Frontend')
+];
+const rutaFrontend = candidatasFrontend.find(function(r) {
+  try { return require('fs').statSync(r).isDirectory(); } catch (e) { return false; }
+}) || path.join(__dirname, '../Frontend');
+app.use(express.static(rutaFrontend));
 
 app.get('/health', function(req,res){ res.json({ ok:true, env: process.env.NODE_ENV||'development', time: new Date().toISOString() }); });
 app.get('/api/health', function(req,res){ res.json({ ok:true, env: process.env.NODE_ENV||'development', time: new Date().toISOString() }); });
@@ -134,12 +145,21 @@ app.use((err, req, res, next) => {
     res.status(500).json({ success: false, mensaje: 'Error interno del servidor' });
 });
 
-try {
-    require('./services/backup').initAutoBackup();
-} catch (e) {
-    console.error('Aviso: no se pudo iniciar backups automáticos:', e.message);
+// Serverless (Vercel): los timers de backup mantienen vivo el worker; se omiten.
+if (!process.env.VERCEL) {
+    try {
+        require('./services/backup').initAutoBackup();
+    } catch (e) {
+        console.error('Aviso: no se pudo iniciar backups automáticos:', e.message);
+    }
 }
 
-app.listen(PUERTO, '0.0.0.0', function() {
-    console.log('Servidor iniciado en puerto '+PUERTO+' env='+(process.env.NODE_ENV||'development'));
-});
+// Local/Railway: node Backend/server.js escucha. En Vercel (@vercel/node) el
+// handler importa esta app; no debe llamar listen (require.main !== module).
+if (require.main === module) {
+    app.listen(PUERTO, '0.0.0.0', function() {
+        console.log('Servidor iniciado en puerto '+PUERTO+' env='+(process.env.NODE_ENV||'development'));
+    });
+}
+
+module.exports = app;

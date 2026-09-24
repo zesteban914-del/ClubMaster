@@ -13,7 +13,7 @@ function getDbConfig() {
   try {
     const { buildPoolConfig } = require('../config/database');
     const c = buildPoolConfig('REAL');
-    return { host: c.host, port: c.port || 3306, user: c.user, password: c.password || '', database: c.database };
+    return { host: c.host, port: c.port || 3306, user: c.user, password: c.password || '', database: c.database, ssl: c.ssl || undefined };
   } catch (e) {
     return {
       host: process.env.DB_HOST || 'localhost',
@@ -32,6 +32,12 @@ function getMysqldumpBin() {
     if (fs.existsSync(winPath)) return `"${winPath}"`;
   }
   return 'mysqldump';
+}
+
+function sslArg(cfg) {
+  if (!cfg.ssl) return '';
+  if (cfg.ssl.ca && process.env.DB_SSL_CA) return ` --ssl-ca "${String(process.env.DB_SSL_CA).replace(/"/g, '')}"`;
+  return ' --ssl-mode=REQUIRED';
 }
 
 function nombreArchivo(fecha) {
@@ -74,7 +80,7 @@ function ejecutarBackup() {
     const archivo = nombreArchivo();
     const destino = path.join(BACKUP_DIR, archivo);
     const bin = getMysqldumpBin();
-    const cmd = `${bin} -h ${cfg.host} -P ${cfg.port} -u ${cfg.user} ${cfg.database} > "${destino}"`;
+    const cmd = `${bin} -h ${cfg.host} -P ${cfg.port} -u ${cfg.user}${sslArg(cfg)} ${cfg.database} > "${destino}"`;
     const env = Object.assign({}, process.env, { MYSQL_PWD: cfg.password });
     exec(cmd, { env, maxBuffer: 500 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {

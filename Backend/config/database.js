@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const fs = require('fs');
 const { AsyncLocalStorage } = require('async_hooks');
 
 function parseDatabaseUrl(url) {
@@ -12,6 +13,35 @@ function parseDatabaseUrl(url) {
       database: u.pathname.replace(/^\//, '').split('?')[0],
     };
   } catch (e) { return null; }
+}
+
+// Lee el certificado CA desde DB_SSL_CA (path o contenido PEM) para
+// proveedores como Aiven que exigen verificar la cadena de certificados.
+function readCaCert(prefix) {
+  const pfx = prefix === 'DEMO' ? 'DEMO_' : '';
+  const raw = process.env[`DB_${pfx}SSL_CA`] || process.env.DB_SSL_CA;
+  if (!raw) return null;
+  const content = raw.trim().startsWith('-----BEGIN') ? raw : (function () {
+    try { return fs.readFileSync(raw, 'utf8'); } catch (e) { console.warn(`[DB] No se pudo leer DB_SSL_CA "${raw}": ${e.message}`); return null; }
+  })();
+  return content;
+}
+
+// Normaliza cómo habilitar SSL/TSL hacia la BD (muy común en nubes:
+// Railway, Clever Cloud, Aiven, PlanetScale, Render, etc.).
+function sslConfigFor(urlVar, prefix) {
+  const pfx = prefix === 'DEMO' ? 'DEMO_' : '';
+  const sslEnv = String(process.env[`DB_${pfx}SSL`] || process.env.DB_SSL || '').toLowerCase();
+  let sslModeUrl = '';
+  try { sslModeUrl = String(new URL(urlVar || '').searchParams.get('ssl-mode') || '').toLowerCase(); } catch (e) {}
+  const hostsConSSL = /planetscale|aiven|railway|render|clever|freesqldatabase/i.test(urlVar || '');
+  const enabled = /^(true|1|required|verify-ca|verify-identity)$/.test(sslEnv) ||
+                  hostsConSSL ||
+                  ['required', 'verify-ca', 'verify-identity'].indexOf(sslModeUrl) !== -1;
+  if (!enabled) return undefined;
+  const ca = readCaCert(prefix);
+  if (ca) return { ca };
+  return { rejectUnauthorized: false };
 }
 
 function buildPoolConfig(prefix) {
@@ -33,7 +63,7 @@ function buildPoolConfig(prefix) {
         keepAliveInitialDelay: 10000,
         idleTimeout: 60000,
         maxIdle: Number(process.env.DB_MAX_IDLE || 10),
-        ssl: /true|1/i.test(process.env.DB_SSL || '') || /planetscale|aiven|railway|render/i.test(urlVar) ? { rejectUnauthorized: false } : undefined,
+        ssl: sslConfigFor(urlVar, prefix),
       };
     }
   }
@@ -43,7 +73,6 @@ function buildPoolConfig(prefix) {
   const passKey = `DB_${pfx}PASSWORD`;
   const nameKey = `DB_${pfx}NAME`;
   const portKey = `DB_${pfx}PORT`;
-  const sslEnv = process.env[`DB_${pfx}SSL`] || process.env.DB_SSL || '';
   const host = process.env[hostKey] || process.env.DB_HOST || (prefix === 'DEMO' ? 'localhost' : undefined);
   if (!host && prefix !== 'DEMO') {
     console.warn('[DB] DB_HOST/DATABASE_URL no definido — usando localhost solo para desarrollo');
@@ -63,8 +92,9 @@ function buildPoolConfig(prefix) {
     idleTimeout: 60000,
     maxIdle: Number(process.env.DB_MAX_IDLE || 10),
   };
+  const ssl = sslConfigFor('', prefix);
+  if (ssl) cfg.ssl = ssl;
   if (!cfg.password) console.warn(`[DB] ${passKey}/DB_PASSWORD vacio — verifica tu .env en produccion`);
-  if (/true|1/i.test(sslEnv)) cfg.ssl = { rejectUnauthorized: false };
   return cfg;
 }
 
@@ -90,4 +120,4 @@ const pool = new Proxy(poolReal, {
     return val;
   }
 });
-module.exports = { pool, poolReal, poolDemo, demoStorage, isDemoActive, getPool, buildPoolConfig };
+module.exports = { pool, poolReal, poolDemo, demoStorage, isDemoActive, getPool, buildPoolConfig, sslConfigFor };
