@@ -26,7 +26,7 @@ const shellOverride = [];
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
-const { resolverConexionReal, EN_RAILWAY } = require('../config/env');
+const { resolverConexionReal, EN_RAILWAY, diagnosticarErrorConexion } = require('../config/env');
 const { buildPoolConfig } = require('../config/database');
 
 function formaLarga(s) {
@@ -84,10 +84,15 @@ function contarTablas(conn) {
 
   const cfg = buildPoolConfig('REAL');
   console.log('\n=== 3. Pool que construira mysql2 ===');
-  console.log('ssl    : ' + (cfg.ssl ? JSON.stringify(cfg.ssl) : 'DESHABILITADO (fallara en Railway)'));
+  console.log('ssl    : ' + (cfg.ssl ? JSON.stringify(cfg.ssl) : 'DESHABILITADO'));
   console.log('Railway en el entorno: ' + (EN_RAILWAY ? 'si' : 'no'));
-  if (!cfg.ssl) {
-    console.log('AVISO: sin SSL. En Railway define DB_SSL=true.');
+  if (cfg.ssl) {
+    console.log('OK: SSL activo. Se auto-habilita para hosts railway/rlwy/aiven/planetscale/');
+    console.log('    render/clever, con DB_SSL=true, o si la URL trae ?ssl-mode=REQUIRED.');
+  } else {
+    console.log('AVISO: sin SSL. El MySQL de Railway NO lo exige en red interna, asi que');
+    console.log('    esto NO causa "Access denied for user". Activalo (DB_SSL=true) solo si');
+    console.log('    tu proveedor lo pide o si el error es de handshake/certificado.');
   }
 
   console.log('\n=== 4. Prueba de conexion ===');
@@ -136,15 +141,8 @@ function contarTablas(conn) {
     console.error('  host   : ' + e.config.host + ':' + e.config.port);
     console.error('  base   : ' + e.config.database);
   }
-  if (e.code === 'ER_ACCESS_DENIED_ERROR' || e.errno === 1045) {
-    console.error('');
-    console.error('DIAGNOSTICO: la CONTRASENA es incorrecta. No es SSL ni red.');
-    console.error('  Revisa en Railway -> servicio MySQL -> Connect o Variables.');
-    console.error('  Compara host, puerto y clave con los de la seccion 2.');
-  } else if (e.code === 'ECONNREFUSED' || e.code === 'ETIMEDOUT' || e.code === 'ENOTFOUND') {
-    console.error('');
-    console.error('DIAGNOSTICO: no hay respuesta de red. Revisa host/puerto y');
-    console.error('  que Public Proxying este Enabled en el servicio MySQL.');
-  }
+  // Diagnostico compartido con migrate.js y server.js (config/env.js):
+  // causas y arreglos en español, sin imprimir nunca la clave.
+  diagnosticarErrorConexion(e).forEach(function (l) { console.error(l); });
   process.exit(1);
 });

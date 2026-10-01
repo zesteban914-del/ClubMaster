@@ -9,6 +9,7 @@ ClubMaster = POS + inventory + finance system for nightclubs/bars. Node 22 + Exp
 - `npm run setup` — migrate + seed (demo roles/users, catalogs; all seed users password `1234`). REFUSES to run if `NODE_ENV=production` or host is not localhost/127.0.0.1 (use `setup:fresh` instead).
 - `npm run setup:fresh` — re-provision a NEW install: migrate, wipe all transactional tables, create only the admin from REQUIRED `ADMIN_EMAIL`/`ADMIN_TEMP_PASSWORD` (>=12 chars, bcrypt like login, never printed; no defaults). DESTRUCTIVE — never run against a client with data.
 - `npm run clean:dupes` — dedupes `zonas`/`unidades_medida`; MUST run before `migrate` can add their UNIQUE indexes (ALTER fails on duplicates).
+- `npm run db:doctor` (`db:doctor:migrate` to also migrate) — connection diagnostics: shell-inherited vars, which config source wins, the exact pool passed to mysql2, a live connection test and table counts. Never prints secrets. `migrate`, `db:doctor` and server startup all print the same Spanish diagnosis block per error code (`Backend/config/env.js` -> `diagnosticarErrorConexion`); Railway `Access denied for user 'root'` playbook lives in `docs/railway-acceso-denegado.md`.
 - `npm run seed:*`, `seed:reset`/`clean` (= `cleanData.js`), `fix:admin`, `fix-stock-negativo.js` (zeroes negative stock) — one-off maintenance.
 - PM2: `pm2 start ecosystem.config.js` (fork, 1 instance); PaaS uses `Procfile`.
 

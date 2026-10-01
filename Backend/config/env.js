@@ -46,6 +46,29 @@ function fallar(mensaje) {
     process.exit(1);
 }
 
+// decodeURIComponent lanza URIError cuando el valor trae un "%" suelto
+// (una clave con "%zz", por ejemplo). En ese caso devolvemos el texto
+// crudo: es mejor intentar la conexion con la clave literal que fallar
+// con "URL no valida" sin explicar nada.
+function decodificarSeguro(valor) {
+    const v = String(valor === undefined || valor === null ? '' : valor);
+    try { return decodeURIComponent(v); } catch (e) { return v; }
+}
+
+// Referencia de Railway sin resolver: si el nombre del servicio no coincide
+// (o la variable no existe), Railway deja el texto tal cual y MySQL recibe
+// "${{MySQL.MYSQLPASSWORD}}" como clave -> Access denied for user 'root'.
+const REFERENCIA_RAILWAY = /\$\{\{[^}]*\}\}/;
+
+function esReferenciaSinResolver(valor) {
+    return REFERENCIA_RAILWAY.test(String(valor || ''));
+}
+
+function primeraReferencia(valor) {
+    const m = String(valor || '').match(REFERENCIA_RAILWAY);
+    return m ? m[0] : '';
+}
+
 function parseUrlMySQL(url) {
     try {
         const u = new URL(url);
@@ -53,8 +76,8 @@ function parseUrlMySQL(url) {
         return {
             host: u.hostname,
             port: u.port ? Number(u.port) : 3306,
-            user: decodeURIComponent(u.username || ''),
-            password: decodeURIComponent(u.password || ''),
+            user: decodificarSeguro(u.username),
+            password: decodificarSeguro(u.password),
             database: (u.pathname || '').replace(/^\//, '').split('?')[0]
         };
     } catch (e) {
@@ -62,18 +85,44 @@ function parseUrlMySQL(url) {
     }
 }
 
+// Una clave con "#" o "/" rompe el parseo de la URL (new URL lanza) y el
+// mensaje "URL no valida" no explica que el problema es la clave. Aqui se
+// detecta para decirlo explicitamente.
+function urlRotaPorClaveEspecial(url) {
+    const sinEsquema = String(url || '').replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//, '');
+    const usuarioClave = sinEsquema.split('@')[0] || '';
+    return /[#/?]/.test(usuarioClave) ? true : false;
+}
+
 function desdeUrl(etiqueta, url) {
+    if (esReferenciaSinResolver(url)) {
+        fallar(
+            etiqueta + ' tiene una referencia de Railway SIN RESOLVER: ' + primeraReferencia(url) + '\n' +
+            '  Railway la dejo como texto literal, asi que MySQL recibe esa cadena como clave y responde\n' +
+            '  "Access denied for user \'root\' (using password: YES)".\n' +
+            '  Revisa que el servicio MySQL se llame EXACTAMENTE como en la referencia (Mayusculas incluidas)\n' +
+            '  y que la variable exista en ese servicio. Referencia correcta: ' + etiqueta + '=${{MySQL.MYSQL_URL}}'
+        );
+    }
     const p = parseUrlMySQL(url);
     if (!p || !p.database) {
+        if (urlRotaPorClaveEspecial(url)) {
+            fallar(
+                etiqueta + ' no se pudo parsear porque la clave contiene "#", "/" o "?" sin codificar.\n' +
+                '  Esos caracteres cortan la URL. Solucion: usa las variables sueltas en vez de la URL\n' +
+                '  (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME) o codifica la clave\n' +
+                '  ("#"=%23, "/"=%2F, "?"=%3F, "@"=%40, "%"=%25).'
+            );
+        }
         fallar(etiqueta + ' no es una URL MySQL valida (formato mysql://usuario:clave@host:puerto/base). Corrigela; la clave no se imprimira.');
     }
-    return { origen: etiqueta, url: url, host: p.host, port: p.port, user: p.user, password: p.password, database: p.database };
+    return revisarConexion({ origen: etiqueta, url: url, host: p.host, port: p.port, user: p.user, password: p.password, database: p.database });
 }
 
 function desdeVariablesSueltas() {
     const host = process.env.DB_HOST || process.env.MYSQLHOST || '';
     if (!host) return null;
-    return {
+    return revisarConexion({
         origen: 'variables sueltas (DB_* / MYSQL*)',
         url: '',
         host: host,
@@ -81,7 +130,48 @@ function desdeVariablesSueltas() {
         user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
         password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
         database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'discoteca_db'
-    };
+    });
+}
+
+// Validaciones finales de la conexion resuelta. Nunca imprime la clave:
+// solo su longitud y si trae espacios o referencias sin resolver.
+function revisarConexion(c) {
+    const campos = { host: c.host, user: c.user, password: c.password, database: c.database };
+    Object.keys(campos).forEach(function(k) {
+        if (esReferenciaSinResolver(campos[k])) {
+            const nombre = k === 'password' ? 'la clave' : k;
+            fallar(
+                'En la conexion resuelta ' + nombre + ' quedo como referencia de Railway SIN RESOLVER: ' +
+                primeraReferencia(campos[k]) + '\n' +
+                '  Railway no encontro ese servicio/variable y dejo el texto literal; MySQL lo rechaza con\n' +
+                '  "Access denied for user \'root\' (using password: YES)". Corrige el nombre del servicio en la\n' +
+                '  referencia (coinciden mayusculas) o pega el valor real.'
+            );
+        }
+    });
+    if (c.password && c.password !== c.password.trim()) {
+        console.warn(
+            '[BD] AVISO: la clave tiene espacios o saltos de linea al inicio/final ' +
+            '(' + c.password.length + ' caracteres, ' + c.password.trim().length + ' sin ellos). ' +
+            'Casi siempre es un copy/paste del panel: reescribe la variable sin espacios.'
+        );
+    }
+    if (c.user && c.user !== c.user.trim()) {
+        console.warn('[BD] AVISO: el usuario de BD tiene espacios al inicio/final.');
+    }
+    if (c.host && /\.railway\.internal$/i.test(c.host) && !EN_RAILWAY) {
+        console.warn('[BD] AVISO: el host es interno de Railway (' + c.host + ') y este proceso NO corre en Railway.');
+    }
+    return c;
+}
+
+// Resumen seguro para logs: origen, host, puerto, usuario, base y largo de
+// la clave. NUNCA incluye la clave.
+function resumenConexion(c) {
+    if (!c) return 'sin configurar';
+    return 'origen=' + c.origen + ' host=' + c.host + ':' + c.port +
+        ' usuario=' + c.user + ' base=' + c.database +
+        ' clave=' + (c.password ? c.password.length + ' caracteres' : 'VACIA');
 }
 
 // Devuelve la conexion REAL resuelta o null si no hay ninguna configuracion.
@@ -199,16 +289,104 @@ function puerto() {
     return 3000;
 }
 
+// =========================================================
+// Diagnostico de errores de conexion (nunca imprime claves).
+// Devuelve lineas en español listas para console.error.
+// =========================================================
+function diagnosticarErrorConexion(err) {
+    const lineas = [];
+    const c = resolverConexionReal();
+    const codigo = String((err && (err.code || err.errno)) || '');
+    const mensaje = String((err && err.message) || err || '');
+
+    lineas.push('--- Diagnostico de conexion a MySQL ---');
+    lineas.push('Config usada : ' + resumenConexion(c));
+    lineas.push('Codigo       : ' + (codigo || '(sin codigo)'));
+    lineas.push('Mensaje      : ' + mensaje);
+    if (c && /\.railway\.internal$/i.test(c.host) && !EN_RAILWAY) {
+        lineas.push('Entorno      : fuera de Railway, pero el host es interno (*.railway.internal).');
+    }
+
+    if (codigo === 'ER_ACCESS_DENIED_ERROR' || codigo === '1045' || /Access denied for user/i.test(mensaje)) {
+        lineas.push('');
+        lineas.push('DIAGNOSTICO: MySQL respondio. La red y el puerto estan bien;');
+        lineas.push('lo que no coincide es el USUARIO o la CLAVE. Causas, en orden de frecuencia:');
+        lineas.push('');
+        lineas.push('1) Cambiaste MYSQL_ROOT_PASSWORD DESPUES de crear el servicio.');
+        lineas.push('   MySQL solo aplica esa variable en la PRIMERA inicializacion del volumen:');
+        lineas.push('   el servidor sigue teniendo la clave ANTIGUA mientras MYSQL_URL/MYSQLPASSWORD');
+        lineas.push('   ya apuntan a la nueva. Es la causa #1 del "Access denied" en Railway.');
+        lineas.push('   Arreglo A (conserva datos): en Railway -> servicio MySQL -> pestaña Shell/Deploy,');
+        lineas.push('     entra con la clave ANTIGUA y ejecuta:');
+        lineas.push("       ALTER USER 'root'@'%' IDENTIFIED BY 'TU_CLAVE_NUEVA';  FLUSH PRIVILEGES;");
+        lineas.push('   Arreglo B (conserva datos): devuelve MYSQL_ROOT_PASSWORD al valor antiguo.');
+        lineas.push('   Arreglo C (BORRA datos): Settings -> Delete Volume del MySQL y redespliega.');
+        lineas.push('');
+        lineas.push('2) La referencia de Railway no se resolvio y quedo el texto literal.');
+        lineas.push('   En el servicio backend la variable debe ser EXACTAMENTE:');
+        lineas.push('     DATABASE_URL=${{MySQL.MYSQL_URL}}');
+        lineas.push('   Si tu servicio se llama distinto (mysql, db, MySQL-Prod), ajusta el nombre.');
+        lineas.push('   En Deploy -> Variables, el valor ya resuelto debe empezar con mysql://');
+        lineas.push('   y NO mostrar "${{" ni "}}".');
+        lineas.push('');
+        lineas.push('3) Clave copiada con espacios/salto de linea, o con caracteres especiales');
+        lineas.push('   (# / ? @ %) que rompen la URL. Prueba con variables sueltas en el backend:');
+        lineas.push('     DB_HOST=${{MySQL.MYSQLHOST}}       DB_PORT=${{MySQL.MYSQLPORT}}');
+        lineas.push('     DB_USER=${{MySQL.MYSQLUSER}}       DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}');
+        lineas.push('     DB_NAME=${{MySQL.MYSQLDATABASE}}');
+        lineas.push('   (sin DATABASE_URL ni MYSQL_URL: esas ganan y anulan las sueltas).');
+        lineas.push('');
+        lineas.push('4) Hay DOS servicios MySQL en el proyecto y el backend apunta al otro.');
+        lineas.push('');
+        lineas.push('Verificacion rapida desde tu PC (usa la URL PUBLICA del servicio MySQL):');
+        lineas.push('   PowerShell : $env:DATABASE_URL="<MYSQL_PUBLIC_URL>"; node Backend/scripts/diagnose-db.js');
+        lineas.push('   Bash       : DATABASE_URL="<MYSQL_PUBLIC_URL>" node Backend/scripts/diagnose-db.js');
+    } else if (codigo === 'ER_DBACCESS_DENIED_ERROR' || codigo === '1044') {
+        lineas.push('');
+        lineas.push('DIAGNOSTICO: usuario y clave correctos, pero sin permiso sobre esa base.');
+        lineas.push('Revisa que la base del final de la URL exista en el servicio MySQL');
+        lineas.push('(MYSQLDATABASE, por defecto "railway") y que el usuario sea el dueno.');
+    } else if (codigo === 'ENOTFOUND' || codigo === 'EAI_AGAIN' || /getaddrinfo/i.test(mensaje)) {
+        lineas.push('');
+        lineas.push('DIAGNOSTICO: el host no resuelve (DNS).');
+        lineas.push('- Si termina en .railway.internal, esa URL SOLO funciona dentro de Railway:');
+        lineas.push('  desde tu PC usa MYSQL_PUBLIC_URL con Public Proxying activado.');
+        lineas.push('- Dentro de Railway, confirma que ambos servicios esten en el MISMO proyecto/entorno.');
+    } else if (codigo === 'ECONNREFUSED' || codigo === 'ETIMEDOUT' || codigo === 'ECONNRESET' ||
+               codigo === 'PROTOCOL_CONNECTION_LOST' || codigo === 'PROTOCOL_SEQUENCE_TIMEOUT') {
+        lineas.push('');
+        lineas.push('DIAGNOSTICO: no hay respuesta de red del MySQL.');
+        lineas.push('- Servicio MySQL caido o aun arrancando (miralo en Deploy logs).');
+        lineas.push('- Puerto equivocado: el proxy publico de Railway NO usa 3306, usa el puerto de MYSQL_PUBLIC_URL.');
+        lineas.push('- Public Proxying desactivado (solo necesario para conectar desde tu PC).');
+    } else if (codigo === 'ER_NOT_SUPPORTED_AUTH_MODE' || /caching_sha2_password|auth plugin/i.test(mensaje)) {
+        lineas.push('');
+        lineas.push('DIAGNOSTICO: el plugin de autenticacion no coincide.');
+        lineas.push("Crea/ajusta el usuario con mysql_native_password, o actualiza mysql2 (>=3.x ya lo soporta).");
+    } else if (/SSL|certificate|self.signed|handshake/i.test(mensaje)) {
+        lineas.push('');
+        lineas.push('DIAGNOSTICO: fallo el handshake TLS.');
+        lineas.push('- Prueba DB_SSL=false (el MySQL de Railway no exige SSL en red interna).');
+        lineas.push('- Si el proveedor pide verificar el CA, pega el PEM en DB_SSL_CA.');
+    }
+    lineas.push('--------------------------------------');
+    return lineas;
+}
+
 module.exports = {
     EN_RAILWAY,
     esProduccion,
     fallar,
     parseUrlMySQL,
+    decodificarSeguro,
+    esReferenciaSinResolver,
     resolverConexionReal,
     exigirConexionReal,
     nombreBaseDatosReal,
+    resumenConexion,
     hostEsLocal,
     verificarNoUrlInternaRailway,
+    diagnosticarErrorConexion,
     origenesCorsPermitidos,
     validarCorsAlArrancar,
     validarJwtAlArrancar,

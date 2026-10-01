@@ -35,8 +35,33 @@ En el servicio **backend** de Railway, la referencia correcta es:
 DATABASE_URL=${{MySQL.MYSQL_URL}}
 ```
 
+### Si Railway rechaza la conexion
+
+`Access denied for user 'root' (using password: YES)` significa que MySQL **si
+respondio**: no es red ni SSL, es el usuario o la clave. Causas, en orden de
+frecuencia (guia completa paso a paso en
+[`docs/railway-acceso-denegado.md`](docs/railway-acceso-denegado.md)):
+
+1. **Cambiaste `MYSQL_ROOT_PASSWORD` despues de crear el servicio.** MySQL solo
+   la aplica en la primera inicializacion del volumen: el servidor conserva la
+   clave antigua mientras `MYSQL_URL` ya muestra la nueva. Se arregla con
+   `ALTER USER 'root'@'%' IDENTIFIED BY '...'; FLUSH PRIVILEGES;` desde el Shell
+   del servicio MySQL (o devolviendo la variable al valor antiguo).
+2. **La referencia `${{MySQL.MYSQL_URL}}` no se resolvio** (nombre del servicio
+   distinto) y MySQL recibe el texto literal como clave. El valor resuelto en el
+   backend debe empezar con `mysql://`.
+3. **Clave con espacios o con `#` `/` `?` `@` `%`**, que rompen la URL. Usa
+   variables sueltas (`DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`
+   referenciando a `MYSQLHOST`/`MYSQLPORT`/...) o codifica la clave.
+4. **Dos servicios MySQL** en el proyecto y el backend apunta al otro.
+
+`npm run migrate`, `npm run db:doctor` y el arranque del servidor imprimen que
+configuracion gano (host, puerto, usuario, base y largo de la clave — nunca la
+clave) mas el diagnostico segun el codigo de error.
+
 ## Comandos
 
+- `npm run db:doctor` — diagnostico de conexion: variables que trae el shell, fuente que gana, pool exacto, prueba real y tablas. Con `--migrate` ademas migra.
 - `npm run migrate` — esquema idempotente (`CREATE TABLE IF NOT EXISTS` + `ALTER` guardados). Se puede repetir sin romper nada. Termina con codigo 0 si todo ok y 1 si falla, asi que sirve como **Pre-deploy Command** en Railway. Desde tu PC: `$env:DATABASE_URL = "<MYSQL_PUBLIC_URL>"; npm run migrate`.
 - `npm run clean:dupes` — **debe correr antes de la primera migracion** si la base ya tiene `zonas` o `unidades_medida` con nombres repetidos: sin eso, el `ALTER TABLE ... ADD UNIQUE` de esos indices falla y `migrate` lo reporta como aviso (no aborta, pero el indice unico no se crea y los `INSERT IGNORE` de los seeds duplicarian filas).
 - `npm run setup` — migrate + seed con usuarios demo (clave `1234`). **Solo local**: se niega si `NODE_ENV=production` o si el host no es `localhost`/`127.0.0.1`.

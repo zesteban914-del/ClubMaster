@@ -8,6 +8,8 @@
     "start": "node server.js",
     "dev": "node server.js",
     "migrate": "node scripts/migrate.js",
+    "db:doctor": "node scripts/diagnose-db.js",
+    "db:doctor:migrate": "node scripts/diagnose-db.js --migrate",
     "clean:dupes": "node scripts/clean-duplicates.js",
     "fix:admin": "node scripts/fix-admin.js",
     "fix-stock-negativo": "node scripts/fix-stock-negativo.js"

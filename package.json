@@ -9,6 +9,8 @@
     "postinstall": "echo 'install ok'",
     "migrate": "node Backend/scripts/migrate.js",
     "migrate:prod": "NODE_ENV=production node Backend/scripts/migrate.js",
+    "db:doctor": "node Backend/scripts/diagnose-db.js",
+    "db:doctor:migrate": "node Backend/scripts/diagnose-db.js --migrate",
     "seed": "node Backend/scripts/seed.js",
     "seed:ventas": "node Backend/scripts/seed-ventas.js",
     "seed:all": "node Backend/scripts/seedAllData.js",

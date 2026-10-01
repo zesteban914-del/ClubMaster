@@ -170,6 +170,17 @@ if (!process.env.VERCEL) {
 if (require.main === module) {
     app.listen(PUERTO, '0.0.0.0', function() {
         console.log('Servidor iniciado en puerto '+PUERTO+' env='+(process.env.NODE_ENV||'development'));
+        // Prueba de la conexion a MySQL (NO fatal: /health debe seguir vivo).
+        // Si falla, los logs de Railway muestran QUE configuracion gano y el
+        // diagnostico en español con las causas tipicas (clave, referencia sin
+        // resolver, host interno, SSL). Nunca se imprime la clave.
+        console.log('Probando MySQL -> ' + env.resumenConexion(env.resolverConexionReal()));
+        db.pool.query('SELECT 1')
+            .then(function() { console.log('MySQL OK: la conexion del backend responde.'); })
+            .catch(function(err) {
+                console.error('MySQL NO responde: el proceso sigue arriba, pero las rutas /api fallaran.');
+                env.diagnosticarErrorConexion(err).forEach(function(l) { console.error(l); });
+            });
     });
 }
 

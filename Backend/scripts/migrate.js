@@ -10,7 +10,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
-const { nombreBaseDatosReal, verificarNoUrlInternaRailway } = require('../config/env');
+const { nombreBaseDatosReal, verificarNoUrlInternaRailway, resolverConexionReal, resumenConexion, diagnosticarErrorConexion } = require('../config/env');
 const { pool } = require('../config/database');
 
 async function agregarColumna(connection, tabla, columna, definicion) {
@@ -1029,10 +1029,15 @@ if (require.main === module) {
     // Codigo de salida explicito: Railway interprets 0 como OK y
     // detiene el despliegue si el comando falla (1).
     // Se cierra el pool antes de salir para no cortar consultas en vuelo.
+    // Antes de conectar se imprime QUE configuracion gano (sin la clave):
+    // en los Deploy logs de Railway es lo primero que hay que mirar cuando
+    // el Pre-deploy Command falla con "Access denied".
+    console.log('migrate -> ' + resumenConexion(resolverConexionReal()));
     migrate()
         .then(() => pool.end().catch(() => {}).then(() => process.exit(0)))
         .catch((error) => {
             console.error('Migraciones fallidas:', error && error.message ? error.message : error);
+            diagnosticarErrorConexion(error).forEach(function(l){ console.error(l); });
             return pool.end().catch(() => {}).then(() => process.exit(1));
         });
 }
