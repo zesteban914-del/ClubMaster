@@ -21,6 +21,43 @@ Desde este commit el propio codigo te lo dice: `npm run migrate`,
 - host, puerto, usuario, base y **largo** de la clave (la clave nunca se imprime),
 - las causas probables segun el codigo de error.
 
+## Camino rapido: 3 clics, sin saber ni tocar la clave
+
+Casi todos los `Access denied` de ClubMaster en Railway se resuelven dejando que
+**Railway inyecte la clave por ti**, en vez de escribirla a mano. No necesitas
+saberla.
+
+1. Servicio **backend** -> pestana **Variables** -> borra TODO lo de base de datos
+   que este escrito a mano: `DATABASE_URL`, `MYSQL_URL`, `DB_HOST`, `DB_PORT`,
+   `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MYSQLHOST`, `MYSQLPASSWORD`,
+   `MYSQLDATABASE`. (Recuerda: `DATABASE_URL` gana y anula las sueltas; dejar dos
+   fuentes a medias es lo que produce el 1045.)
+2. **+ New Variable** -> nombre `DATABASE_URL` -> en el valor escribe `${{` y
+   Railway autocompleta: elige servicio **MySQL** -> variable **MYSQL_URL**. Queda
+   `DATABASE_URL=${{MySQL.MYSQL_URL}}`. Railway la resuelve con el host, el puerto
+   y la clave reales del servicio.
+3. **Redeploy**. En Deploy logs debes ver:
+   ```
+   migrate -> origen=DATABASE_URL host=<...>.railway.internal:3306 usuario=root base=railway clave=NN caracteres
+   ...
+   Migraciones completadas exitosamente.
+   ```
+
+Si el nombre de tu servicio MySQL no es exactamente `MySQL`, el autocompletado te
+muestra el nombre correcto: usa ese (las referencias distinguen mayusculas).
+
+**Si despues de esto sigue el Access denied**, entonces la clave que guarda el
+servidor no es la del panel (volumen inicializado con otra). Antes del
+procedimiento largo, dos intentos de 10 segundos:
+
+- Abre el **Shell** del servicio MySQL y prueba `mysql -u root` y `mysql` (sin
+  `-p`). En algunas imagenes el root local entra por socket sin clave; si entra,
+  ejecuta ahi mismo el `ALTER USER` del Paso 2 y listo.
+- Mira la clave en el panel: servicio MySQL -> Variables -> `MYSQL_ROOT_PASSWORD`
+  (icono del ojo). No hay que recordarla, esta guardada en texto plano.
+
+Recien si ambos fallan, sigue con **"No recuerdo la clave de root"** (Paso 2).
+
 ## Causa 1 (la mas frecuente): cambiaste la clave despues de crear el MySQL
 
 `MYSQL_ROOT_PASSWORD` solo se aplica en la **primera inicializacion del volumen**.
