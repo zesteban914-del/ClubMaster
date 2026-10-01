@@ -5,6 +5,24 @@ require('express-async-errors');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const env = require('./config/env');
+
+// ---------------------------------------------------------
+// Validaciones de arranque (centralizadas en config/env.js):
+// - produccion exige SESSION_SECRET y JWT_SECRET (>=32 chars,
+//   distinto del valor de ejemplo de .env.example)
+// - CORS_ORIGINS nunca puede contener "*" y en produccion no
+//   puede venir vacio
+// - PORT es obligatorio en produccion (Railway lo inyecta);
+//   el default 3000 aplica solo en desarrollo
+// La conexion a MySQL se exige al crear el pool en
+// config/database.js (DATABASE_URL -> MYSQL_URL -> DB_*/MYSQL*).
+// ---------------------------------------------------------
+env.validarSessionSecretAlArrancar();
+env.validarJwtAlArrancar();
+const corsOrigins = env.validarCorsAlArrancar();
+const PUERTO = env.puerto();
+
 const db = require('./database');
 const mailer = require('./config/mailer');
 const {
@@ -17,36 +35,20 @@ const {
 } = require('./middlewares/authMiddleware');
 
 const app = express();
-const PUERTO = Number(process.env.PORT || 3000);
-app.set('trust proxy', 1);
-
+// Railway/Heroku/etc. terminan TLS en un proxy y reenvian la peticion por
+// HTTP: sin 'trust proxy' Express cree que la conexion no es segura y la
+// cookie de sesion (secure:true en produccion) nunca se envia. Debe quedar
+// ANTES del middleware de sesion y definirse UNA sola vez.
 if (process.env.NODE_ENV === 'production') {
-  if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
-    console.error('FATAL: SESSION_SECRET debe tener >=32 chars en production. Define en .env (ej: openssl rand -hex 32)');
-    process.exit(1);
-  }
-  if (!process.env.DB_HOST && !process.env.DATABASE_URL) {
-    console.error('FATAL: DB_HOST o DATABASE_URL requerido en production');
-    process.exit(1);
-  }
-  if ((process.env.CORS_ORIGINS || '').trim() === '*') {
-    console.error('FATAL: CORS_ORIGINS="*" no permitido en production. Define dominios autorizados por cliente.');
-    process.exit(1);
-  }
-  if (!process.env.CORS_ORIGINS && !process.env.APP_URL) {
-    console.warn('ADVERTENCIA production: CORS_ORIGINS/APP_URL no definido -> CORS rechazara origenes externos');
-  }
+    app.set('trust proxy', 1);
 }
-const corsOrigins = (process.env.CORS_ORIGINS || process.env.APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000'))
-  .split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+
 const corsOptions = {
   origin: function(origin, cb){
+    // Sin cabecera Origin (curl, health checks, same-origin): permitir.
     if(!origin) return cb(null, true);
-    if(corsOrigins.indexOf(origin)!==-1) return cb(null, true);
-    if(corsOrigins.indexOf('*')!==-1) {
-      if(process.env.NODE_ENV==='production') return cb(new Error('CORS bloqueado para origen: '+origin+' (wildcard no permitido en prod)'));
-      return cb(null, true);
-    }
+    const normalizado = String(origin).trim().replace(/\/+$/, '');
+    if(corsOrigins.indexOf(normalizado)!==-1) return cb(null, true);
     if(process.env.NODE_ENV!=='production') return cb(null, true);
     return cb(new Error('CORS bloqueado para origen: '+origin));
   },
@@ -73,6 +75,15 @@ app.use(helmet({
   frameguard: { action: 'deny' },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
+
+// ---------------------------------------------------------
+// Health check: 200 {"ok":true} sin consultar la base de datos.
+// Registrado antes del resto de middlewares para responder
+// aunque la BD no este disponible.
+// ---------------------------------------------------------
+app.get('/health', function(req,res){ res.status(200).json({ ok: true }); });
+app.get('/api/health', function(req,res){ res.status(200).json({ ok: true }); });
+
 app.use((req,res,next)=>{
  if(req.path==='/health' || req.path==='/api/health') return next();
  if(process.env.NODE_ENV==='production' && !req.secure && req.headers['x-forwarded-proto']!=='https'){
@@ -87,18 +98,20 @@ app.use((req,res,next)=>{
   const isDemo = req.headers['x-demo']==='1' || req.query.demo==='1' || process.env.DEMO_MODE==='true';
   demoStorage.run({isDemo}, ()=> next());
 });
-app.use(crearSesion(process.env.SESSION_SECRET || 'dev-only-secret-cambia-en-produccion-32chars!!'));
+// Sin fallback fijo: config/env.js exige SESSION_SECRET en produccion
+// y genera uno aleatorio en desarrollo.
+app.use(crearSesion(env.secretSesion()));
 
 const RUTAS_API_PUBLICAS = [
-  '/auth/login', '/auth/pin-login',
-  '/registro', '/recuperar-contrasena', '/auth/recuperar-password', '/reiniciar-contrasena',
-  '/sesion',
-  '/2fa/setup', '/2fa/enable', '/2fa/disable', '/2fa/status'
+    '/auth/login', '/auth/pin-login',
+    '/registro', '/recuperar-contrasena', '/auth/recuperar-password', '/reiniciar-contrasena',
+    '/sesion',
+    '/2fa/setup', '/2fa/enable', '/2fa/disable', '/2fa/status'
 ];
 app.use('/api', function(req, res, next) {
-  if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') return next();
-  if (RUTAS_API_PUBLICAS.indexOf(req.path) !== -1) return next();
-  return require('./middlewares/authMiddleware').requiereAutenticacion(req, res, next);
+    if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') return next();
+    if (RUTAS_API_PUBLICAS.indexOf(req.path) !== -1) return next();
+    return require('./middlewares/authMiddleware').requiereAutenticacion(req, res, next);
 });
 
 const { detectarColumnasProductos } = require('./helpers/column-detection');
@@ -136,9 +149,6 @@ const rutaFrontend = candidatasFrontend.find(function(r) {
 }) || path.join(__dirname, '../Frontend');
 app.use(express.static(rutaFrontend));
 
-app.get('/health', function(req,res){ res.json({ ok:true, env: process.env.NODE_ENV||'development', time: new Date().toISOString() }); });
-app.get('/api/health', function(req,res){ res.json({ ok:true, env: process.env.NODE_ENV||'development', time: new Date().toISOString() }); });
-
 app.use((err, req, res, next) => {
     console.error('Error no manejado:', err);
     if(err.message && err.message.indexOf('CORS bloqueado')!==-1) return res.status(403).json({ success:false, mensaje: err.message });
@@ -154,8 +164,9 @@ if (!process.env.VERCEL) {
     }
 }
 
-// Local/Railway: node Backend/server.js escucha. En Vercel (@vercel/node) el
-// handler importa esta app; no debe llamar listen (require.main !== module).
+// Local/Railway: node Backend/server.js escucha en 0.0.0.0:PORT.
+// En Vercel (@vercel/node) el handler importa esta app; no debe
+// llamar listen (require.main !== module).
 if (require.main === module) {
     app.listen(PUERTO, '0.0.0.0', function() {
         console.log('Servidor iniciado en puerto '+PUERTO+' env='+(process.env.NODE_ENV||'development'));

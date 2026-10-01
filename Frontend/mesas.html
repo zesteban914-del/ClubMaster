@@ -61,6 +61,8 @@
         </div>
     </div>
 
+    <script src="js/env-config.js"></script>
+    <script src="js/config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() { cargarMesas(); });
 
@@ -68,7 +70,7 @@
             var contenedor = document.getElementById('contenedorMesas');
             if (!contenedor) return;
             contenedor.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
-            fetch('/api/mesas')
+            fetch(API_BASE + '/api/mesas')
                 .then(function(r) { if (!r.ok) throw new Error('Error'); return r.json(); })
                 .then(function(data) {
                     if (data.success) renderizarGrilla(data.mesas);

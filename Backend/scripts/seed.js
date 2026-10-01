@@ -158,6 +158,20 @@ async function seed() {
 }
 
 if (require.main === module) {
+    // Guarda de seguridad: el seed de usuarios demo (clave 1234) solo
+    // aplica a entornos locales de desarrollo. En produccion o contra un
+    // host remoto hay que usar npm run setup:fresh.
+    const { resolverConexionReal, hostEsLocal, esProduccion } = require('../config/env');
+    const conexion = resolverConexionReal();
+    const host = conexion ? conexion.host : 'localhost';
+    if (esProduccion()) {
+        console.error('ERROR: npm run setup/seed no debe correr con NODE_ENV=production. En produccion usa: npm run setup:fresh');
+        process.exit(1);
+    }
+    if (!hostEsLocal(host)) {
+        console.error('ERROR: npm run setup/seed solo funciona contra localhost/127.0.0.1 (host detectado: ' + host + '). Para entornos remotos usa: npm run setup:fresh');
+        process.exit(1);
+    }
     seed()
         .then(() => process.exit(0))
         .catch(() => process.exit(1));

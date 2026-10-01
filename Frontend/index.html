@@ -526,6 +526,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/env-config.js"></script>
+    <script src="js/config.js"></script>
 
     <script>
         // ========== BURBUJAS ==========
@@ -564,7 +566,7 @@
             btn.classList.add('loading');
             var msg = document.getElementById('mensaje');
 
-            fetch('/login', {
+            fetch(API_BASE + '/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -589,8 +591,9 @@
                     msg.innerHTML = '<div class="alert alert-danger-custom">' + data.mensaje + '</div>';
                 }
             })
-            .catch(function() {
+            .catch(function(err) {
                 btn.classList.remove('loading');
+                console.error('No se pudo conectar con el servidor. URL intentada:', API_BASE + '/login', err);
                 msg.innerHTML = '<div class="alert alert-danger-custom">No se pudo conectar con el servidor</div>';
             });
         });
@@ -606,7 +609,7 @@
 
             msg.innerHTML = '<div class="alert" style="background:rgba(255,165,0,0.15);color:#ffc832;border:1px solid rgba(255,165,0,0.2);border-radius:10px;font-size:0.82rem;margin-top:12px"><i class="bi bi-hourglass-split me-1"></i> Procesando...</div>';
 
-            fetch('/api/recuperar-contrasena', {
+            fetch(API_BASE + '/api/recuperar-contrasena', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ correo: correo })

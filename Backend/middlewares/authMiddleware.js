@@ -35,12 +35,20 @@ function getSessionStore() {
 }
 
 // ------------------------------------------------------------------
-// Sesion segura: cookie HttpOnly + Secure + SameSite=Strict
+// Sesion segura: cookie HttpOnly + Secure + SameSite
 // ------------------------------------------------------------------
-// 'secure' se activa en produccion (requiere HTTPS). En desarrollo
-// local (http://localhost) queda en false para que la cookie funcione.
+// Produccion (frontend en Vercel + backend en Railway = dominios
+// distintos): la cookie debe ser cross-site, osea SameSite=None y
+// Secure=true (el navegador exige ambos juntos). En desarrollo local
+// (http://localhost) SameSite=Lax y Secure=false para que funcione.
+// COOKIE_SAMESITE permite forzar el valor; si no se define, se decide
+// aqui segun NODE_ENV.
 function crearSesion(secreto) {
     const store = getSessionStore();
+    const esProduccion = process.env.NODE_ENV === 'production';
+    const sameSite = String(
+        process.env.COOKIE_SAMESITE || (esProduccion ? 'none' : 'lax')
+    ).toLowerCase();
     return session({
         name: 'clubmaster.sid',
         secret: secreto,
@@ -49,8 +57,8 @@ function crearSesion(secreto) {
         store: store || undefined,
         cookie: {
             httpOnly: true,                       // no accesible desde JavaScript
-            secure: process.env.NODE_ENV === 'production', // solo HTTPS en prod
-            sameSite: 'strict',                   // mitiga CSRF
+            secure: esProduccion,                 // solo HTTPS en prod
+            sameSite: sameSite,                   // 'none' en prod (Vercel + Railway)
             maxAge: 1000 * 60 * 60 * 8            // 8 horas
         }
     });

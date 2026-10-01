@@ -1,4 +1,3 @@
-const API_BASE = (typeof window.API_BASE_CFG!=='undefined'?window.API_BASE_CFG:(location.origin.indexOf('http')===0 && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'?location.origin:''));
 function isDemoMode(){ try{ return localStorage.getItem('demo')==='1' || new URLSearchParams(location.search).get('demo')==='1'; }catch(e){return false;} }
 function demoActualizarBanner(){ var b=document.getElementById('demoBanner'); if(!b) return; var on=isDemoMode(); b.style.display=on?'flex':'none'; try{ document.body.classList.toggle('demo-active', on); }catch(e){} }
 function demoEntrar(){ localStorage.setItem('demo','1'); location.href=location.pathname+'?demo=1'; }

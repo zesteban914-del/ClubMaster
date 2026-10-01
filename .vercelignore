@@ -7,3 +7,6 @@ backups
 test_*.js
 test_*.json
 docs
+# Backend corre en Railway: Vercel solo sirve estatico,
+# sin funciones @vercel/node (api/index.js queda fuera del build)
+api

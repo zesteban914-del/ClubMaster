@@ -200,6 +200,8 @@
         </form>
     </div>
 
+    <script src="js/env-config.js"></script>
+    <script src="js/config.js"></script>
     <script>
         // Leer el token de la URL (?token=...)
         var params = new URLSearchParams(window.location.search);
@@ -269,7 +271,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Procesando...';
 
-            fetch('/api/reiniciar-contrasena', {
+            fetch(API_BASE + '/api/reiniciar-contrasena', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token, nuevaContrasena: pass })

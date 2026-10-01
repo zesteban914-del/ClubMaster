@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const { AsyncLocalStorage } = require('async_hooks');
+const { exigirConexionReal } = require('./env');
 
 function parseDatabaseUrl(url) {
   try {
@@ -34,7 +35,7 @@ function sslConfigFor(urlVar, prefix) {
   const sslEnv = String(process.env[`DB_${pfx}SSL`] || process.env.DB_SSL || '').toLowerCase();
   let sslModeUrl = '';
   try { sslModeUrl = String(new URL(urlVar || '').searchParams.get('ssl-mode') || '').toLowerCase(); } catch (e) {}
-  const hostsConSSL = /planetscale|aiven|railway|render|clever|freesqldatabase/i.test(urlVar || '');
+  const hostsConSSL = /planetscale|aiven|railway|rlwy|render|clever|freesqldatabase/i.test(urlVar || '');
   const enabled = /^(true|1|required|verify-ca|verify-identity)$/.test(sslEnv) ||
                   hostsConSSL ||
                   ['required', 'verify-ca', 'verify-identity'].indexOf(sslModeUrl) !== -1;
@@ -44,8 +45,36 @@ function sslConfigFor(urlVar, prefix) {
   return { rejectUnauthorized: false };
 }
 
-function buildPoolConfig(prefix) {
-  const urlVar = prefix === 'DEMO' ? process.env.DATABASE_URL_DEMO : process.env.DATABASE_URL;
+// Pool REAL: la resolucion de la conexion esta centralizada en
+// config/env.js (DATABASE_URL -> MYSQL_URL -> DB_* / MYSQL*).
+// Si no hay ninguna configuracion, exigirConexionReal() termina el
+// proceso con un mensaje en español indicando que variable falta.
+function buildPoolRealConfig() {
+  const c = exigirConexionReal();
+  const cfg = {
+    host: c.host,
+    port: c.port || 3306,
+    user: c.user,
+    password: c.password,
+    database: c.database,
+    waitForConnections: true,
+    connectionLimit: Number(process.env.DB_POOL_LIMIT || 20),
+    queueLimit: Number(process.env.DB_QUEUE_LIMIT || 50),
+    connectTimeout: Number(process.env.DB_CONNECT_TIMEOUT || 10000),
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
+    idleTimeout: 60000,
+    maxIdle: Number(process.env.DB_MAX_IDLE || 10),
+  };
+  const ssl = sslConfigFor(c.url || c.host, 'REAL');
+  if (ssl) cfg.ssl = ssl;
+  if (!cfg.password) console.warn('[DB] La contrasena de BD esta vacia (DB_PASSWORD / MYSQLPASSWORD o la URL) — revisa tu .env en produccion. La clave nunca se imprime en logs.');
+  return cfg;
+}
+
+// Pool DEMO: comportamiento actual (DATABASE_URL_DEMO / DB_DEMO_* / localhost).
+function buildPoolDemoConfig() {
+  const urlVar = process.env.DATABASE_URL_DEMO;
   if (urlVar) {
     const parsed = parseDatabaseUrl(urlVar);
     if (parsed) {
@@ -63,28 +92,18 @@ function buildPoolConfig(prefix) {
         keepAliveInitialDelay: 10000,
         idleTimeout: 60000,
         maxIdle: Number(process.env.DB_MAX_IDLE || 10),
-        ssl: sslConfigFor(urlVar, prefix),
+        ssl: sslConfigFor(urlVar, 'DEMO'),
       };
     }
   }
-  const pfx = prefix === 'DEMO' ? 'DEMO_' : '';
-  const hostKey = `DB_${pfx}HOST`;
-  const userKey = `DB_${pfx}USER`;
-  const passKey = `DB_${pfx}PASSWORD`;
-  const nameKey = `DB_${pfx}NAME`;
-  const portKey = `DB_${pfx}PORT`;
-  const host = process.env[hostKey] || process.env.DB_HOST || (prefix === 'DEMO' ? 'localhost' : undefined);
-  if (!host && prefix !== 'DEMO') {
-    console.warn('[DB] DB_HOST/DATABASE_URL no definido — usando localhost solo para desarrollo');
-  }
   const cfg = {
-    host: host || 'localhost',
-    port: Number(process.env[portKey] || process.env.DB_PORT || 3306),
-    user: process.env[userKey] || process.env.DB_USER || 'root',
-    password: process.env[passKey] || process.env.DB_PASSWORD || '',
-    database: process.env[nameKey] || process.env.DB_NAME || (prefix === 'DEMO' ? 'discoteca_db_demo' : 'discoteca_db'),
+    host: process.env.DB_DEMO_HOST || process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_DEMO_PORT || process.env.DB_PORT || 3306),
+    user: process.env.DB_DEMO_USER || process.env.DB_USER || 'root',
+    password: process.env.DB_DEMO_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.DB_DEMO_NAME || process.env.DB_NAME || 'discoteca_db_demo',
     waitForConnections: true,
-    connectionLimit: Number(process.env.DB_POOL_LIMIT || (prefix === 'DEMO' ? 5 : 20)),
+    connectionLimit: Number(process.env.DB_POOL_LIMIT || 5),
     queueLimit: Number(process.env.DB_QUEUE_LIMIT || 50),
     connectTimeout: Number(process.env.DB_CONNECT_TIMEOUT || 10000),
     enableKeepAlive: true,
@@ -92,10 +111,13 @@ function buildPoolConfig(prefix) {
     idleTimeout: 60000,
     maxIdle: Number(process.env.DB_MAX_IDLE || 10),
   };
-  const ssl = sslConfigFor('', prefix);
+  const ssl = sslConfigFor('', 'DEMO');
   if (ssl) cfg.ssl = ssl;
-  if (!cfg.password) console.warn(`[DB] ${passKey}/DB_PASSWORD vacio — verifica tu .env en produccion`);
   return cfg;
+}
+
+function buildPoolConfig(prefix) {
+  return prefix === 'DEMO' ? buildPoolDemoConfig() : buildPoolRealConfig();
 }
 
 const poolReal = mysql.createPool(buildPoolConfig('REAL'));

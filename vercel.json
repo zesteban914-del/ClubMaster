@@ -1,12 +1,18 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30,
-      "runtime": "nodejs20.x"
-    }
-  },
+  "version": 2,
+  "buildCommand": "node scripts/vercel-build.js",
+  "outputDirectory": "Frontend",
+  "cleanUrls": false,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api" }
+    { "source": "/app", "destination": "/dashboard.html" },
+    { "source": "/app/:modulo", "destination": "/dashboard.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/mesas", "destination": "/mesas.html" },
+    { "source": "/comandero", "destination": "/comandero.html" },
+    { "source": "/kds", "destination": "/kds.html" },
+    { "source": "/registrar", "destination": "/registrar.html" },
+    { "source": "/reiniciar-contrasena", "destination": "/reiniciar-contrasena.html" },
+    { "source": "/login", "destination": "/index.html" }
   ]
 }

@@ -1,5 +1,16 @@
+// Migraciones idempotentes (CREATE TABLE IF NOT EXISTS + ALTER/indices
+// condicionados por INFORMATION_SCHEMA). Se puede reejecutar en cada
+// despliegue: en Railway sirve como Pre-deploy Command
+// (`npm run migrate`); sale con codigo 0 si todo ok y 1 si falla.
+//
+// Conexion: la resuelve config/env.js con el orden
+// DATABASE_URL -> MYSQL_URL -> DB_*/MYSQL*. Railway expone MYSQL_URL
+// (red interna) al enlazar el servicio MySQL, y MYSQL_PUBLIC_URL para
+// correr este script desde tu PC.
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
+const { nombreBaseDatosReal, verificarNoUrlInternaRailway } = require('../config/env');
 const { pool } = require('../config/database');
 
 async function agregarColumna(connection, tabla, columna, definicion) {
@@ -7,7 +18,7 @@ async function agregarColumna(connection, tabla, columna, definicion) {
         const [cols] = await connection.query(
             `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-            [process.env.DB_NAME || 'discoteca_db', tabla, columna]
+            [nombreBaseDatosReal(), tabla, columna]
         );
         if (cols.length === 0) {
             await connection.query(`ALTER TABLE \`${tabla}\` ADD COLUMN ${definicion}`);
@@ -19,6 +30,9 @@ async function agregarColumna(connection, tabla, columna, definicion) {
 }
 
 async function migrate() {
+    // Si la conexion apunta a la URL interna de Railway (*.railway.internal)
+    // y el script corre fuera de Railway (tu PC), se detiene aqui.
+    verificarNoUrlInternaRailway();
     const connection = await pool.getConnection();
     try {
         console.log('Iniciando migraciones...');
@@ -74,7 +88,7 @@ async function migrate() {
                 const [ex] = await connection.query(
                     `SELECT COUNT(*) AS c FROM INFORMATION_SCHEMA.STATISTICS
                      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?`,
-                    [process.env.DB_NAME || 'discoteca_db', tabla, indice]
+                    [nombreBaseDatosReal(), tabla, indice]
                 );
                 if (ex[0].c === 0) {
                     await connection.query(`ALTER TABLE \`${tabla}\` ADD UNIQUE INDEX \`${indice}\` (${columnas})`);
@@ -144,7 +158,7 @@ async function migrate() {
         const [cols] = await connection.query(`
             SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'pedidos' AND COLUMN_NAME = 'metodo_pago'`,
-            [process.env.DB_NAME || 'discoteca_db']
+            [nombreBaseDatosReal()]
         );
         if (cols.length === 0) {
             await connection.query(`ALTER TABLE pedidos ADD COLUMN metodo_pago VARCHAR(30) NULL AFTER total`);
@@ -273,7 +287,7 @@ async function migrate() {
                 const [cols] = await connection.query(
                     `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
                      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'productos' AND COLUMN_NAME = ?`,
-                    [process.env.DB_NAME || 'discoteca_db', col]
+                    [nombreBaseDatosReal(), col]
                 );
                 if (cols.length === 0) {
                     await connection.query(`ALTER TABLE productos ADD COLUMN ${def}`);
@@ -620,7 +634,7 @@ async function migrate() {
         try {
             const [exIdx] = await connection.query(
                 `SELECT COUNT(*) AS c FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'pedidos' AND INDEX_NAME = 'uq_pedidos_clave_cliente'`,
-                [process.env.DB_NAME || 'discoteca_db']
+                [nombreBaseDatosReal()]
             );
             if (exIdx[0].c === 0) {
                 await connection.query(`ALTER TABLE pedidos ADD UNIQUE INDEX uq_pedidos_clave_cliente (clave_cliente)`);
@@ -632,7 +646,7 @@ async function migrate() {
         const [tsCols] = await connection.query(`
             SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'pedidos' AND COLUMN_NAME = 'timestamp_pedido'`,
-            [process.env.DB_NAME || 'discoteca_db']
+            [nombreBaseDatosReal()]
         );
         if (tsCols.length === 0) {
             await connection.query(`ALTER TABLE pedidos ADD COLUMN timestamp_pedido DATETIME NULL AFTER metodo_pago`);
@@ -644,7 +658,7 @@ async function migrate() {
         const [detCols] = await connection.query(`
             SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'detalle_pedido' AND COLUMN_NAME = 'observaciones'`,
-            [process.env.DB_NAME || 'discoteca_db']
+            [nombreBaseDatosReal()]
         );
         if (detCols.length === 0) {
             await connection.query(`ALTER TABLE detalle_pedido ADD COLUMN observaciones TEXT NULL AFTER subtotal`);
@@ -1012,9 +1026,15 @@ async function migrate() {
 }
 
 if (require.main === module) {
+    // Codigo de salida explicito: Railway interprets 0 como OK y
+    // detiene el despliegue si el comando falla (1).
+    // Se cierra el pool antes de salir para no cortar consultas en vuelo.
     migrate()
-        .then(() => process.exit(0))
-        .catch(() => process.exit(1));
+        .then(() => pool.end().catch(() => {}).then(() => process.exit(0)))
+        .catch((error) => {
+            console.error('Migraciones fallidas:', error && error.message ? error.message : error);
+            return pool.end().catch(() => {}).then(() => process.exit(1));
+        });
 }
 
 module.exports = { migrate };

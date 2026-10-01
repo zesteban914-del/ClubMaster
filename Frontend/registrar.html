@@ -516,6 +516,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/env-config.js"></script>
+    <script src="js/config.js"></script>
     <script>
         // Burbujas
         (function() {
@@ -626,7 +628,7 @@
             btn.classList.add('loading');
 
             // NOTA: NO se envia id_rol. El servidor asigna el rol de menor privilegio.
-            fetch('/api/registro', {
+            fetch(API_BASE + '/api/registro', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

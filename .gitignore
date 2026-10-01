@@ -3,10 +3,15 @@ node_modules/
 package-lock.json
 
 # Variables de entorno - NUNCA subir al repo
+# Cubre .env, .env.local, .env.production, .env.bak-* y similares
+# en cualquier carpeta (raiz, Backend/, etc.)
 .env
-.env.local
-.env.production
+.env.*
 Backend/.env
+Backend/.env.*
+*.env.bak*
+# ...pero los ejemplos SI se versionan (van al final: gana la ultima regla)
+!.env.example
 
 # Logs y temp
 npm-debug.log*
@@ -23,6 +28,9 @@ Thumbs.db
 
 # Vercel build local
 .vercel/
+
+# Generado en build (scripts/vercel-build.js) - nunca commitear con URL fija
+Frontend/js/env-config.js
 
 Backend/backups/
 backups/

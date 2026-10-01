@@ -1,21 +1,22 @@
 # AGENTS.md
 
-ClubMaster = POS + inventory + finance system for nightclubs/bars. Node >=18 + Express 4 (CommonJS) backend, vanilla HTML/CSS/JS (Bootstrap 5 CDN) frontend served statically by Express, MySQL via raw SQL. All code comments, DB schemas, API keys, and UI text are Spanish; keep that convention. Not a git repo (no VCS configured).
+ClubMaster = POS + inventory + finance system for nightclubs/bars. Node 22 + Express 4 (CommonJS) backend, vanilla HTML/CSS/JS (Bootstrap 5 CDN) frontend served statically by Express, MySQL via raw SQL. All code comments, DB schemas, API keys, and UI text are Spanish; keep that convention. Git repo on `origin/main`, but `git` is NOT on PATH — use `C:\Program Files\Git\bin\git.exe`.
 
 ## Commands (from repo root)
 
-- `npm start` / `npm run dev` — both just run `node Backend/server.js`; default port 3000.
-- `npm run migrate` — idempotent code-first schema (`migrate.js`: CREATE TABLE IF NOT EXISTS + ALTER). Safe to re-run.
-- `npm run setup` — migrate + seed (demo roles/users, catalogs; all seed users password `1234`).
-- `npm run setup:fresh` — re-provision a NEW install: migrate, wipe all transactional tables, create admin from `ADMIN_EMAIL`/`ADMIN_TEMP_PASSWORD` (default admin@clubmaster.com / ClubMaster2026*). DESTRUCTIVE — never run against a client with data.
+- `npm start` / `npm run dev` — both just run `node Backend/server.js`; listens on `process.env.PORT` (default 3000 only in development; Railway injects PORT).
+- `npm run migrate` — idempotent code-first schema (`migrate.js`: CREATE TABLE IF NOT EXISTS + ALTER). Safe to re-run. Aborts if the DB host is `*.railway.internal` outside Railway ("usa MYSQL_PUBLIC_URL").
+- `npm run setup` — migrate + seed (demo roles/users, catalogs; all seed users password `1234`). REFUSES to run if `NODE_ENV=production` or host is not localhost/127.0.0.1 (use `setup:fresh` instead).
+- `npm run setup:fresh` — re-provision a NEW install: migrate, wipe all transactional tables, create only the admin from REQUIRED `ADMIN_EMAIL`/`ADMIN_TEMP_PASSWORD` (>=12 chars, bcrypt like login, never printed; no defaults). DESTRUCTIVE — never run against a client with data.
 - `npm run clean:dupes` — dedupes `zonas`/`unidades_medida`; MUST run before `migrate` can add their UNIQUE indexes (ALTER fails on duplicates).
 - `npm run seed:*`, `seed:reset`/`clean` (= `cleanData.js`), `fix:admin`, `fix-stock-negativo.js` (zeroes negative stock) — one-off maintenance.
 - PM2: `pm2 start ecosystem.config.js` (fork, 1 instance); PaaS uses `Procfile`.
 
 ## Environment & config gotchas
 
-- Env loaded from `Backend/.env` first, then root `.env`; dotenv does not override, so `Backend/.env` wins. `.env.example` exists in both places.
-- Production startup hard-exits if `SESSION_SECRET` < 32 chars, if `DB_HOST`/`DATABASE_URL` missing, or if `CORS_ORIGINS` is `*` (must be explicit comma-separated origins). Dev mode allows any origin.
+- Env loaded from `Backend/.env` first, then root `.env` (both via `Backend/config/env.js`); dotenv does not override, so `Backend/.env` wins. `.env.example` exists in both places.
+- DB connection is centralized in `Backend/config/env.js`: order `DATABASE_URL` -> `MYSQL_URL` -> `DB_*`/`MYSQL*` (Railway MySQL exposes `MYSQL_URL`, `MYSQL_PUBLIC_URL`, `MYSQLHOST`… — it does NOT create `DATABASE_URL`). No config at all = fatal Spanish error; passwords are never logged.
+- Production startup hard-exits if `SESSION_SECRET` or `JWT_SECRET` is missing/<32 chars/example, if no DB config exists, if `CORS_ORIGINS` is empty or contains `*`, or if `PORT` is missing (dev default only). Dev mode allows any origin. `/health` returns `200 {"ok":true}` without touching the DB.
 - npm scripts `migrate:prod`/`setup:prod` use bash `NODE_ENV=... node` syntax — broken on Windows. Set `$env:NODE_ENV="production"` first.
 - Sessions: cookie `clubmaster.sid`, MySQL-backed store (auto-creates `sessions` table), 8h TTL, Secure only in production (needs HTTPS). Login rate limit: 5 failed attempts/IP -> 15 min lockout (easy to hit while testing).
 

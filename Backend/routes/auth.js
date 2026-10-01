@@ -92,7 +92,10 @@ module.exports = function(app, db, security, mailer, authMiddleware) {
             await db.guardarTokenRecuperacion(usuario.id_usuario, tokenHash, expiraEn);
             await mailer.enviarCorreoRecuperacion(usuario.correo, usuario.nombre, token);
             res.json({ exito: true, mensaje: 'Si el correo esta registrado, recibiras un enlace para restablecer tu contrasena.' });
-        } catch (error) { console.error('Error en recuperar contrasena:', error); res.status(500).json({ exito: false, mensaje: 'Error en el servidor' }); }
+        } catch (error) {
+            console.error('Error en recuperar contrasena:', error);
+            res.status(503).json({ exito: false, mensaje: 'No se pudo enviar el correo de recuperacion ahora mismo. Intenta de nuevo en unos minutos.' });
+        }
     }
     app.post('/api/recuperar-contrasena', recuperarLimiter, handlerRecuperar);
     app.post('/api/auth/recuperar-password', recuperarLimiter, handlerRecuperar);

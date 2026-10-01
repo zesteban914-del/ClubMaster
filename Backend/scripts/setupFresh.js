@@ -1,6 +1,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
+const { nombreBaseDatosReal, resolverConexionReal } = require('../config/env');
 const { pool } = require('../config/database');
 const { migrate } = require('./migrate');
 const bcrypt = require('bcryptjs');
@@ -11,9 +12,27 @@ async function tableExists(conn, name) {
 }
 
 async function setupFresh() {
+  // ---------------------------------------------------------
+  // Variables obligatorias: se validan ANTES de tocar la base
+  // de datos. No hay valores por defecto y la clave nunca se
+  // imprime por pantalla.
+  // ---------------------------------------------------------
+  const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminNombre = process.env.ADMIN_NAME || 'Administrador';
+  const tempPass = process.env.ADMIN_TEMP_PASSWORD || '';
+  if (!adminEmail) {
+    console.error('ERROR: falta la variable ADMIN_EMAIL (obligatoria para setup:fresh). Ejemplo: ADMIN_EMAIL=admin@tudominio.com');
+    process.exit(1);
+  }
+  if (!tempPass || tempPass.length < 12) {
+    console.error('ERROR: falta ADMIN_TEMP_PASSWORD o tiene menos de 12 caracteres (minimo 12). La clave no se imprimira por pantalla.');
+    process.exit(1);
+  }
+  const conexion = resolverConexionReal();
+
   console.log('=================================================');
   console.log(' ClubMaster - setup:fresh (cliente nuevo SaaS/On-Premise)');
-  console.log(` env=${process.env.NODE_ENV || 'development'} db=${process.env.DB_NAME || 'discoteca_db'}`);
+  console.log(` env=${process.env.NODE_ENV || 'development'} db=${nombreBaseDatosReal()}`);
   console.log('=================================================');
 
   if (process.env.NODE_ENV === 'production') {
@@ -69,9 +88,6 @@ async function setupFresh() {
     console.log('  -> 100% parametrizable via PUT /api/configuracion sin tocar codigo');
 
     console.log('\n[4/4] Creando usuario Administrador inicial (contrasena temporal)...');
-    const adminEmail = (process.env.ADMIN_EMAIL || process.env.SETUP_ADMIN_EMAIL || 'admin@clubmaster.com').trim().toLowerCase();
-    const adminNombre = process.env.ADMIN_NAME || 'Administrador';
-    const tempPass = process.env.ADMIN_TEMP_PASSWORD || process.env.SETUP_ADMIN_PASSWORD || 'ClubMaster2026*';
     const [roles] = await conn.query("SELECT id_rol FROM roles WHERE LOWER(nombre)='administrador' OR LOWER(nombre)='admin' LIMIT 1");
     let idRolAdmin = roles.length ? roles[0].id_rol : 1;
     if (!roles.length) {
@@ -107,10 +123,10 @@ async function setupFresh() {
     console.log('\n=================================================');
     console.log(' setup:fresh COMPLETADO');
     console.log('=================================================');
-    console.log(` DB: ${process.env.DB_NAME || 'discoteca_db'} @ ${process.env.DB_HOST || 'localhost'}`);
+    console.log(` DB: ${nombreBaseDatosReal()} @ ${conexion ? conexion.host : 'localhost'}`);
     console.log(` Admin: ${adminEmail}`);
-    console.log(` Password temporal: ${tempPass}`);
-    console.log('  -> Cambia la contrasena en el primer login (Perfil / Usuarios)');
+    console.log(' Password temporal: definida en ADMIN_TEMP_PASSWORD (no se muestra por pantalla).');
+    console.log('  -> La app NO fuerza el cambio en el primer login: cambiala desde Perfil / Usuarios.');
     console.log(' Config: GET /api/configuracion  PUT /api/configuracion');
     console.log('   claves: nombre_local, nit_local, logo_url, pie_factura, propina_default, iva_global, ico_global');
     console.log(' CORS production: define CORS_ORIGINS="https://cliente.com,https://app.cliente.com" en .env');

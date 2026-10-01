@@ -26,7 +26,13 @@ function obtenerTransporter() {
         auth: {
             user: user,
             pass: pass
-        }
+        },
+        // Timeouts cortos: si el SMTP esta bloqueado (p.ej. Railway sin plan
+        // Pro bloquea 587/465) falla en ~10 s en lugar de colgarse 2 min
+        // (defaults de Nodemailer: connection 2 min, socket 10 min).
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000
     });
 
     return transporter;
