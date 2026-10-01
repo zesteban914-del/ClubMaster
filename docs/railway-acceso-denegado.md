@@ -58,6 +58,126 @@ si entra y redespliega el backend.
 Servicio MySQL -> Settings -> **Delete Volume** -> redespliega. Solo si la base
 esta vacia o ya tienes respaldo. **Lee la seccion siguiente antes de hacerlo.**
 
+## No recuerdo la clave de root
+
+No hace falta recordarla: **Railway la guarda en texto plano en las variables del
+servicio** y puedes revelarla. Y si la que muestra el panel ya no es la real
+(volumen inicializado con otra), se puede reiniciar **sin perder datos**.
+
+### Paso 1: leela en el panel
+
+- Servicio **MySQL** -> pestana **Variables** -> `MYSQL_ROOT_PASSWORD` (icono del
+  ojo para revelarla). Tambien la llevan dentro `MYSQLPASSWORD`, `MYSQL_URL` y
+  `MYSQL_PUBLIC_URL`, con esta forma: `mysql://root:<AQUI_VA_LA_CLAVE>@host:puerto/railway`.
+- Servicio **backend** -> **Variables** -> `DATABASE_URL`: el valor resuelto es la
+  cadena que de verdad se le envia a MySQL, clave incluida.
+
+Compara ambos valores:
+
+| Lo que ves | Significa | Ir a |
+| --- | --- | --- |
+| Coinciden y aun asi falla | el servidor conserva una clave anterior (volumen viejo) | Paso 2 |
+| `DATABASE_URL` muestra `${{...}}` u otro valor | la referencia no se resolvio | Causa 2 |
+| La clave tiene espacios o `#` `/` `?` `@` `%` | se rompe al armar la URL | Causa 3 |
+
+Dos ayudas extra:
+
+- `npm run db:doctor` imprime el **largo** de la clave (nunca la clave) y el
+  origen que gana. Si ese largo no coincide con el de la variable del panel, el
+  backend esta leyendo otra cosa. En Railway, el Pre-deploy Command imprime la
+  misma linea: `migrate -> origen=DATABASE_URL host=... clave=NN caracteres`.
+- En los **Deploy logs del PRIMER despliegue** del servicio MySQL, la imagen
+  oficial imprime `GENERATED ROOT PASSWORD: ...` cuando genero la clave al azar.
+  Railway conserva el historial de despliegues: buscalo alli.
+
+### Paso 2: reiniciarla sin saberla y sin perder datos
+
+En MySQL 8, `--skip-grant-tables` **tambien activa `skip_networking`** (no acepta
+conexiones remotas), asi que el SQL se ejecuta desde el **Shell del propio
+contenedor** del servicio MySQL.
+
+1. Servicio MySQL -> Settings -> Deploy -> **Custom Start Command**, temporalmente:
+   ```
+   mysqld --skip-grant-tables
+   ```
+   Guarda y **Redeploy**.
+2. Abre el **Shell** del servicio MySQL y entra sin clave:
+   ```bash
+   mysql -u root
+   ```
+3. Ejecuta (`FLUSH PRIVILEGES` primero: sin eso `ALTER USER` esta deshabilitado
+   en modo skip-grant-tables):
+   ```sql
+   FLUSH PRIVILEGES;
+   ALTER USER 'root'@'%' IDENTIFIED BY 'NuevaClaveLarga123';
+   ALTER USER 'root'@'localhost' IDENTIFIED BY 'NuevaClaveLarga123';
+   FLUSH PRIVILEGES;
+   SELECT user, host, plugin FROM mysql.user;
+   ```
+   Si `'root'@'%'` no existe:
+   ```sql
+   CREATE USER 'root'@'%' IDENTIFIED BY 'NuevaClaveLarga123';
+   GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+   FLUSH PRIVILEGES;
+   ```
+   Elige una clave **sin** `#` `/` `?` `@` `%` `'` `"` ni espacios: te ahorra la
+   Causa 3 de una vez. `'root'@'%'` es la que importa: el backend conecta desde
+   otro contenedor, no desde localhost.
+4. **Quita** el Custom Start Command (dejalo como estaba) -> **Redeploy**.
+5. En el servicio MySQL, deja `MYSQL_ROOT_PASSWORD` con la clave nueva. Esa
+   variable **ya no cambia la clave del servidor** (solo se uso en la primera
+   inicializacion del volumen), pero es de la que salen `MYSQL_URL`,
+   `MYSQLPASSWORD` y `MYSQL_PUBLIC_URL`: si no coincide, el backend vuelve a
+   fallar con Access denied.
+6. Verifica desde tu PC y redespliega el backend:
+   ```powershell
+   $env:DATABASE_URL = "<MYSQL_PUBLIC_URL con la clave nueva>"
+   npm run db:doctor          # debe terminar en CONEXION OK
+   ```
+
+**Variante `--init-file`** (metodo de la documentacion oficial; mantiene la red
+activa, no deja el servidor abierto sin autenticacion):
+
+1. Desde el Shell del MySQL, escribe el archivo **dentro del volumen** (persiste
+   entre despliegues; el resto del contenedor no):
+   ```bash
+   printf "ALTER USER 'root'@'%%' IDENTIFIED BY 'NuevaClaveLarga123';\nFLUSH PRIVILEGES;\n" \
+     > /var/lib/mysql/reset-password.sql
+   ```
+2. Custom Start Command: `mysqld --init-file=/var/lib/mysql/reset-password.sql`
+   -> Redeploy. El servidor ejecuta ese archivo al arrancar, con privilegios de
+   root y sin pedir clave.
+3. Quita el Custom Start Command, borra el archivo
+   (`rm /var/lib/mysql/reset-password.sql`) y redespliega. Sigue los pasos 5 y 6.
+
+### Ultimo recurso: rescatar los datos sin conocer la clave
+
+Solo si el servicio no te deja cambiar el Start Command ni abrir Shell. **No uses
+Delete Volume**: perderias `mesas`, `productos`, `pedidos` y `detalle_pedido`,
+que `migrate.js` no crea (ver seccion siguiente). Desde el Shell del MySQL, con
+el servidor corriendo, se puede volcar una **copia** del datadir:
+
+```bash
+cp -a /var/lib/mysql /tmp/copia
+mysqld --datadir=/tmp/copia --socket=/tmp/copia.sock --skip-grant-tables &
+mysql --socket=/tmp/copia.sock -u root -e "FLUSH PRIVILEGES; SELECT user,host FROM mysql.user;"
+mysqldump --socket=/tmp/copia.sock -u root --single-transaction --routines --triggers \
+  railway > /tmp/respaldo.sql
+```
+
+Y de ahi, o lo restauras en un servicio MySQL nuevo (misma red privada del
+proyecto) o le cambias la clave a la copia y la usas como base definitiva:
+
+```bash
+mysql --socket=/tmp/copia.sock -u root \
+  -e "FLUSH PRIVILEGES; ALTER USER 'root'@'%' IDENTIFIED BY 'NuevaClaveLarga123'; FLUSH PRIVILEGES;"
+```
+
+Avisos: es una copia **en caliente**, puede quedar inconsistente; si `mysqld` no
+arranca sobre ella, reintenta con `--innodb-force-recovery=1` (sube de a uno,
+solo lectura) y vuelca. El filesystem del contenedor es efimero: saca
+`/tmp/respaldo.sql` de ahi en la misma sesion.
+
 ## Que se borra exactamente con "Delete Volume"
 
 `Delete Volume` elimina el **directorio de datos completo** del servicio MySQL:

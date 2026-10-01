@@ -46,7 +46,11 @@ frecuencia (guia completa paso a paso en
    la aplica en la primera inicializacion del volumen: el servidor conserva la
    clave antigua mientras `MYSQL_URL` ya muestra la nueva. Se arregla con
    `ALTER USER 'root'@'%' IDENTIFIED BY '...'; FLUSH PRIVILEGES;` desde el Shell
-   del servicio MySQL (o devolviendo la variable al valor antiguo).
+   del servicio MySQL (o devolviendo la variable al valor antiguo). **No la
+   recuerdas?** Esta guardada en texto plano en Railway (servicio MySQL ->
+   Variables -> `MYSQL_ROOT_PASSWORD`, o dentro de `MYSQL_URL`); y si esa ya no
+   es la real, se reinicia sin perder datos con `mysqld --skip-grant-tables` como
+   Custom Start Command temporal (procedimiento completo en la guia).
 2. **La referencia `${{MySQL.MYSQL_URL}}` no se resolvio** (nombre del servicio
    distinto) y MySQL recibe el texto literal como clave. El valor resuelto en el
    backend debe empezar con `mysql://`.
