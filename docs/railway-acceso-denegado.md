@@ -56,7 +56,101 @@ si entra y redespliega el backend.
 
 **C. Reiniciar el MySQL (BORRA TODOS LOS DATOS).**
 Servicio MySQL -> Settings -> **Delete Volume** -> redespliega. Solo si la base
-esta vacia o ya tienes respaldo (`backups/` o `npm run seed:*`).
+esta vacia o ya tienes respaldo. **Lee la seccion siguiente antes de hacerlo.**
+
+## Que se borra exactamente con "Delete Volume"
+
+`Delete Volume` elimina el **directorio de datos completo** del servicio MySQL:
+todas las bases, todas las tablas, todas las filas, los usuarios MySQL (`root`
+incluido) y sus claves. Railway vuelve a inicializar MySQL vacio aplicando el
+`MYSQL_ROOT_PASSWORD` actual. No es "borrar filas": es formatear el servidor de
+datos. Lo unico que sobrevive son las variables de entorno del servicio.
+
+**No se toca:** el codigo en GitHub, las variables del servicio backend, el
+dominio `*.up.railway.app` ni el frontend en Vercel.
+
+**Vuelve solo al redesplegar** (el Pre-deploy Command es `npm run migrate`):
+
+- 37 tablas del esquema + los seeds que trae `migrate.js`: `permisos`,
+  `rol_permisos`, `rol_zonas_permiso`, `bodegas`, `configuracion_general`.
+- `asistencias`, `auditoria_incidencias` y `vaciados_efectivo` las crea
+  `Backend/routes/operativa.js` al arrancar.
+- `facturas` la crea `Backend/routes/productos.js` bajo demanda.
+
+**ADVERTENCIA: hay tablas que el codigo usa pero que `migrate.js` NO crea**,
+porque solo existen en tu base viva (se crearon a mano en su momento):
+
+| Tabla | Usos en el codigo |
+| --- | --- |
+| `pedidos` | 120 |
+| `productos` | 117 |
+| `mesas` | 66 |
+| `detalle_pedido` | 52 |
+| `detalle_factura` | 5 |
+| `factura_correcciones` | 2 |
+| `mesa_transferencias` | 1 |
+
+Si borras el volumen, el backend arranca y `/health` responde `{"ok":true}`, pero
+**Mesas, Comandero, Productos y Ventas se caen** con
+`Table 'railway.mesas' doesn't exist`. Desde el repo **no hay forma de
+reconstruirlas**: solo desde un dump de tu base actual.
+
+**Catalogos que tampoco vuelven solos:** `migrate` crea vacias `roles`,
+`usuarios`, `zonas`, `unidades_medida`, `categorias`, `metodos_pago`,
+`presentaciones`, `conversiones`, `notas_preparacion`, `configuracion_inventario`
+y `recetas`. Las llena `npm run seed` (usuarios demo con clave `1234`; **solo
+local**, se niega en produccion) o `npm run setup:fresh` (un unico admin real,
+exige `ADMIN_EMAIL` y `ADMIN_TEMP_PASSWORD` >=12 caracteres). Sin uno de los dos,
+**nadie puede iniciar sesion**. Tambien se pierden para siempre: `jornadas`,
+`movimientos_caja`, `arqueos_detalle`, `compras`, `kardex`, `stock_bodegas`,
+`clientes_socios`, `cuentas_por_cobrar`, `abonos_vales`, `mermas`, `turnos`,
+`audit_logs` y las sesiones activas.
+
+**Los backups automaticos no te salvan:** `Backend/services/backup.js` escribe en
+`backups/` **dentro del contenedor** (no en el volumen de MySQL) con retencion de
+7 dias, y el filesystem del contenedor es efimero: se pierde en cada redeploy.
+
+> Conclusión: para destrabar una clave **no necesitas `Delete Volume`**. Usa el
+> arreglo A o el B, que conservan todo. Y haz el respaldo de abajo antes de tocar
+> nada, pase lo que pase.
+
+## Respaldo ahora mismo (2 minutos, desde tu PC)
+
+Necesitas `MYSQL_PUBLIC_URL` del servicio MySQL (Public Proxying activado) y
+`mysqldump` en el PATH. Separa host y puerto de esa URL
+(`mysql://root:clave@HOST:PUERTO/railway`):
+
+```powershell
+# PowerShell: estructura + datos
+mysqldump --host=<HOST> --port=<PUERTO> --user=root --password `
+  --single-transaction --routines --triggers `
+  railway > respaldo_$(Get-Date -Format yyyyMMdd).sql
+```
+
+```bash
+# bash / zsh
+mysqldump --host=<HOST> --port=<PUERTO> --user=root --password \
+  --single-transaction --routines --triggers \
+  railway > respaldo_$(date +%F).sql
+```
+
+Solo la estructura (sirve para incorporar `mesas`/`productos`/`pedidos` a
+`migrate.js`, que es la deuda pendiente del repo):
+
+```bash
+mysqldump --no-data --host=<HOST> --port=<PUERTO> --user=root --password \
+  railway > esquema.sql
+```
+
+Restaurar sobre un MySQL recien creado:
+
+```bash
+mysql --host=<HOST> --port=<PUERTO> --user=root --password railway < respaldo_2026-10-01.sql
+```
+
+Si `mysqldump` tambien te da `Access denied`, entra con la clave antigua desde el
+Shell del servicio MySQL en Railway y saca el dump desde ahi, o aplica primero el
+arreglo A y despues respalda.
 
 ## Causa 2: la referencia de Railway no se resolvio
 

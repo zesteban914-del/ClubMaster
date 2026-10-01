@@ -59,6 +59,15 @@ frecuencia (guia completa paso a paso en
 configuracion gano (host, puerto, usuario, base y largo de la clave — nunca la
 clave) mas el diagnostico segun el codigo de error.
 
+> **No uses "Delete Volume" del MySQL para arreglar la clave.** Ademas de los
+> datos de operacion (jornadas, caja, compras, kardex, cartera, usuarios), hay
+> tablas que el codigo usa pero que `migrate.js` NO crea porque solo existen en
+> la base viva: `mesas`, `productos`, `pedidos`, `detalle_pedido`,
+> `mesa_transferencias`, `detalle_factura`, `factura_correcciones`. Sin un dump
+> previo, Mesas/Comandero/Productos/Ventas no vuelven. Arregla la clave con
+> `ALTER USER 'root'@'%' IDENTIFIED BY '...'` desde el Shell del servicio MySQL y
+> respalda con `mysqldump` (pasos en la guia).
+
 ## Comandos
 
 - `npm run db:doctor` — diagnostico de conexion: variables que trae el shell, fuente que gana, pool exacto, prueba real y tablas. Con `--migrate` ademas migra.
