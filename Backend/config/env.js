@@ -308,10 +308,32 @@ function diagnosticarErrorConexion(err) {
     }
 
     if (codigo === 'ER_ACCESS_DENIED_ERROR' || codigo === '1045' || /Access denied for user/i.test(mensaje)) {
+        // El mensaje de MySQL trae el host del CLIENTE entre comillas: en Railway
+        // es la IPv6 privada del contenedor backend (fd12:...). Si la cuenta
+        // root@'%' no existe, el servidor rechaza la conexion remota con este
+        // MISMO error aunque la clave sea correcta.
+        const mHostCliente = mensaje.match(/'([^']*)'@'([^']*)'/);
+        const hostCliente = mHostCliente ? mHostCliente[2] : '';
+        const remoto = hostCliente && !/^(localhost|127\.0\.0\.1|::1)$/.test(hostCliente);
         lineas.push('');
         lineas.push('DIAGNOSTICO: MySQL respondio. La red y el puerto estan bien;');
         lineas.push('lo que no coincide es el USUARIO o la CLAVE. Causas, en orden de frecuencia:');
         lineas.push('');
+        if (remoto) {
+            lineas.push('0) El mensaje dice @\'' + hostCliente + '\': ese es el CLIENTE (en Railway,');
+            lineas.push('   la IPv6 privada del contenedor backend), no el servidor.');
+            lineas.push('   MySQL distingue usuario@host: root@localhost y root@\'%\' son cuentas');
+            lineas.push('   DISTINTAS. Si solo existe root@localhost, toda conexion remota se rechaza');
+            lineas.push('   con este mismo error aunque la clave sea correcta.');
+            lineas.push('   Compruebalo en el Shell del servicio MySQL, entrando en local:');
+            lineas.push('     mysql -u root -p            (clave = MYSQL_ROOT_PASSWORD del panel)');
+            lineas.push('     SELECT user, host, plugin FROM mysql.user;');
+            lineas.push('   Si falta la fila "root | %", creala con la misma clave:');
+            lineas.push("     CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '<misma clave>';");
+            lineas.push("     GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;");
+            lineas.push('     FLUSH PRIVILEGES;');
+            lineas.push('');
+        }
         lineas.push('1) Cambiaste MYSQL_ROOT_PASSWORD DESPUES de crear el servicio.');
         lineas.push('   MySQL solo aplica esa variable en la PRIMERA inicializacion del volumen:');
         lineas.push('   el servidor sigue teniendo la clave ANTIGUA mientras MYSQL_URL/MYSQLPASSWORD');

@@ -42,7 +42,14 @@ respondio**: no es red ni SSL, es el usuario o la clave. Causas, en orden de
 frecuencia (guia completa paso a paso en
 [`docs/railway-acceso-denegado.md`](docs/railway-acceso-denegado.md)):
 
-1. **Cambiaste `MYSQL_ROOT_PASSWORD` despues de crear el servicio.** MySQL solo
+1. **La cuenta `root@'%'` no existe.** El error muestra el host del CLIENTE
+   (`'root'@'fd12:...'` = la IPv6 privada del backend). MySQL distingue
+   `usuario@host`: si solo existe `root@localhost`, rechaza la conexion remota con
+   el mismo mensaje **aunque la clave sea correcta**. Se comprueba con
+   `SELECT user, host FROM mysql.user;` entrando en local desde el Shell del
+   servicio MySQL, y se arregla con `CREATE USER IF NOT EXISTS 'root'@'%' ...` +
+   `GRANT ALL PRIVILEGES` + `FLUSH PRIVILEGES`.
+2. **Cambiaste `MYSQL_ROOT_PASSWORD` despues de crear el servicio.** MySQL solo
    la aplica en la primera inicializacion del volumen: el servidor conserva la
    clave antigua mientras `MYSQL_URL` ya muestra la nueva. Se arregla con
    `ALTER USER 'root'@'%' IDENTIFIED BY '...'; FLUSH PRIVILEGES;` desde el Shell
@@ -51,13 +58,13 @@ frecuencia (guia completa paso a paso en
    Variables -> `MYSQL_ROOT_PASSWORD`, o dentro de `MYSQL_URL`); y si esa ya no
    es la real, se reinicia sin perder datos con `mysqld --skip-grant-tables` como
    Custom Start Command temporal (procedimiento completo en la guia).
-2. **La referencia `${{MySQL.MYSQL_URL}}` no se resolvio** (nombre del servicio
+3. **La referencia `${{MySQL.MYSQL_URL}}` no se resolvio** (nombre del servicio
    distinto) y MySQL recibe el texto literal como clave. El valor resuelto en el
    backend debe empezar con `mysql://`.
-3. **Clave con espacios o con `#` `/` `?` `@` `%`**, que rompen la URL. Usa
+4. **Clave con espacios o con `#` `/` `?` `@` `%`**, que rompen la URL. Usa
    variables sueltas (`DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`
    referenciando a `MYSQLHOST`/`MYSQLPORT`/...) o codifica la clave.
-4. **Dos servicios MySQL** en el proyecto y el backend apunta al otro.
+5. **Dos servicios MySQL** en el proyecto y el backend apunta al otro.
 
 `npm run migrate`, `npm run db:doctor` y el arranque del servidor imprimen que
 configuracion gano (host, puerto, usuario, base y largo de la clave — nunca la

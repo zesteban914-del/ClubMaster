@@ -58,6 +58,62 @@ procedimiento largo, dos intentos de 10 segundos:
 
 Recien si ambos fallan, sigue con **"No recuerdo la clave de root"** (Paso 2).
 
+## El error muestra una IP: `'root'@'fd12:...'` (la cuenta no acepta ese host)
+
+Ejemplo real de los Deploy logs de Railway:
+
+```
+Migraciones fallidas: Access denied for user 'root'@'fd12:9e0f:2ee6:1:d000:102:3632:62a' (using password: YES)
+```
+
+Lo que dice ese mensaje:
+
+- **MySQL respondio**: el host interno y el puerto son correctos y el servicio
+  esta vivo. No es red, no es DNS, no es SSL.
+- `fd12:...` es la **IPv6 privada del contenedor backend** dentro del proyecto.
+  Es el host del **CLIENTE**, no del servidor: confirma que la conexion va por la
+  red interna de Railway.
+- `using password: YES`: se envio una clave y fue rechazada... **o la cuenta no
+  existe para ese host**, que es lo siguiente.
+
+MySQL identifica las cuentas como `usuario@host`. `'root'@'localhost'` y
+`'root'@'%'` son **cuentas distintas**, cada una con su clave y sus permisos. La
+imagen oficial de MySQL solo crea `root@'%'` cuando arranca con
+`MYSQL_ROOT_HOST=%`, y **solo en la primera inicializacion del volumen**: agregar
+esa variable despues no crea la cuenta. Si en tu MySQL unicamente existe
+`root@localhost`, toda conexion desde el backend se rechaza con este MISMO error
+**aunque la clave sea correcta**.
+
+### Arreglo (2 minutos, sin perder datos y sin tocar el Start Command)
+
+1. Servicio **MySQL** -> Variables -> revela `MYSQL_ROOT_PASSWORD` (icono del ojo).
+2. Servicio **MySQL** -> **Shell** -> entra en local (usa la cuenta
+   `root@localhost`, que si existe):
+   ```bash
+   mysql -u root -p        # pega la clave del paso 1
+   ```
+3. Mira que cuentas hay:
+   ```sql
+   SELECT user, host, plugin FROM mysql.user;
+   ```
+4. Si **no** aparece una fila `root | %`, creala con la misma clave:
+   ```sql
+   CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '<la clave del paso 1>';
+   GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+   FLUSH PRIVILEGES;
+   SELECT user, host, plugin FROM mysql.user;   -- ahora debe aparecer root | %
+   ```
+   Que la clave no tenga `'` `"` `\` `#` `/` `?` `@` `%` ni espacios (Causa 3).
+5. **Redeploy** del backend -> Deploy logs -> `Migraciones completadas exitosamente.`
+
+Si en el paso 2 esa clave no te deja entrar **ni en local**, la clave real del
+servidor es otra (volumen inicializado con un valor anterior): ve a
+["No recuerdo la clave de root"](#no-recuerdo-la-clave-de-root), Paso 2.
+
+> Mejora pendiente: `root@'%'` expone el superusuario a toda la red privada del
+> proyecto. Para produccion conviene un usuario dedicado (`clubmaster@'%'` con
+> permisos solo sobre la base de la app). Hoy la prioridad es que el deploy pase.
+
 ## Causa 1 (la mas frecuente): cambiaste la clave despues de crear el MySQL
 
 `MYSQL_ROOT_PASSWORD` solo se aplica en la **primera inicializacion del volumen**.
