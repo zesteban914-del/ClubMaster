@@ -363,7 +363,7 @@ function repBuildUrl(path){
 }
 function repFetchCorreoConfig(cb){
   var url = repBuildUrl('/api/reportes/config-correo');
-  fetch(url, { headers:{'Accept':'application/json'}, credentials:'same-origin' }).then(function(r){
+  fetch(url, { headers:{'Accept':'application/json'}, credentials:'include' }).then(function(r){
     return r.text().then(function(txt){
       var d; try{ d=JSON.parse(txt); }catch(e){
         if(txt.trim().startsWith('<!DOCTYPE') || txt.trim().startsWith('<html')) d={success:false, mensaje:'Respuesta HTML ('+r.status+'): endpoint no encontrado'};
@@ -481,6 +481,12 @@ function repCorreoToggleAll(){
 // El botón se oculta para el resto de roles segun GET /api/sesion.
 // ---------------------------------------------------------
 var repCorreoRolOk = false;
+function repUsuarioLocal(){
+  var u = null;
+  try{ u = (typeof usuario!=='undefined' && usuario && usuario.id_rol) ? usuario : null; }catch(e){ u = null; }
+  if(!u){ try{ u = JSON.parse(localStorage.getItem('usuario')||'null'); }catch(e){ u = null; } }
+  return u;
+}
 function repRolCorreoPermitido(u){
   if(!u) return false;
   if(Number(u.id_rol)===1 || Number(u.id_rol)===2) return true;
@@ -493,15 +499,22 @@ function repActualizarBotonCorreo(cb){
     repCorreoRolOk = !!ok;
     if(btn) btn.style.display = ok ? 'inline-flex' : 'none';
     if(ok){ try{ repFetchCorreoConfig(); }catch(e){} }
+    else if(window.console && console.warn){
+      var u = repUsuarioLocal();
+      console.warn('[reportes] Boton "Enviar por correo" oculto: rol no autorizado.',
+        { id_rol: u && u.id_rol, rol: u && u.rol });
+    }
     if(cb) cb(repCorreoRolOk);
   };
-  fetch(repBuildUrl('/api/sesion'), { headers:{'Accept':'application/json'}, credentials:'same-origin' })
+  fetch(repBuildUrl('/api/sesion'), { headers:{'Accept':'application/json'}, credentials:'include' })
     .then(function(r){ return r.json(); })
-    .then(function(d){ aplicar(d && d.autenticado && repRolCorreoPermitido(d.usuario)); })
+    .then(function(d){
+      if(d && d.autenticado) return aplicar(repRolCorreoPermitido(d.usuario));
+      // Sin cookie de sesion: intenta con el usuario guardado localmente
+      aplicar(repRolCorreoPermitido(repUsuarioLocal()));
+    })
     .catch(function(){
-      var u = null;
-      try{ u = (typeof usuario!=='undefined' && usuario) ? usuario : JSON.parse(localStorage.getItem('usuario')||'null'); }catch(e){ u = null; }
-      aplicar(repRolCorreoPermitido(u));
+      aplicar(repRolCorreoPermitido(repUsuarioLocal()));
     });
 }
 function repAbrirCorreoModal(){
@@ -647,7 +660,7 @@ function repEnviarCorreo(){
   if(cancelBtn) cancelBtn.disabled = true;
   if(statusEl) statusEl.innerHTML = '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;color:#1e40af;font-size:.8rem"><span class="spinner-border spinner-border-sm me-2"></span>Generando '+reportes.length+' reporte(s) en '+formato.toUpperCase()+' y enviando a '+correos.length+' correo(s)... Esto puede tardar unos segundos.</div>';
 
-  fetch(repBuildUrl('/api/reportes/enviar-correo'), { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(payload), credentials:'same-origin' })
+  fetch(repBuildUrl('/api/reportes/enviar-correo'), { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(payload), credentials:'include' })
     .then(function(r){
       return r.text().then(function(txt){
         var d; try{ d=JSON.parse(txt); }catch(e){
