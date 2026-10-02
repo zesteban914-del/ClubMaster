@@ -143,16 +143,24 @@ function requiereAutenticacion(req, res, next) {
 // ------------------------------------------------------------------
 // RBAC: solo permite pasar si el rol esta en la lista permitida
 // Uso: app.post('/ruta', requireRole('Administrador', 'Gerente'), handler)
+// Tambien acepta IDs de rol: requireRole(1, 2) == Administrador y Gerente.
+// El nombre se compara sin distinguir mayusculas/minusculas.
 // ------------------------------------------------------------------
 function requireRole(...rolesPermitidos) {
     return (req, res, next) => {
-        const rol = req.session && req.session.usuario && req.session.usuario.rol;
-        if (!rol) {
+        const u = req.session && req.session.usuario;
+        if (!u || (u.rol === undefined && u.id_rol === undefined)) {
             return res.status(401).json({ exito: false, mensaje: 'No autenticado.' });
         }
-        if (rolesPermitidos.includes(rol)) {
-            return next();
-        }
+        const idSesion = Number(u.id_rol);
+        const rolSesion = String(u.rol || '').toLowerCase().trim();
+        const autorizado = rolesPermitidos.some(function (p) {
+            const valor = String(p == null ? '' : p).trim();
+            if (!valor) return false;
+            if (/^\d+$/.test(valor)) return idSesion === Number(valor);
+            return rolSesion === valor.toLowerCase();
+        });
+        if (autorizado) return next();
         return res.status(403).json({ exito: false, mensaje: 'Sin permisos de acceso.' });
     };
 }

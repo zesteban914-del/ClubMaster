@@ -55,7 +55,7 @@ function iniciarReportes(){
         +'<div style="flex:1;min-width:160px"><label style="font-size:.7rem;font-weight:800;color:#475569;text-transform:uppercase">Cajero (Cobró)</label><select id="repCajero" class="form-select form-select-sm" style="border-radius:8px"><option value="">Todos</option></select></div>'
         +'<div style="display:flex;gap:6px;align-items:end"><button class="btn btn-sm" style="background:#0f172a;color:#fff;border-radius:8px;padding:7px 14px;font-weight:600" onclick="repAplicarFiltros()"><i class="bi bi-search me-1"></i>Filtrar</button><button class="btn btn-sm btn-outline-secondary" style="border-radius:8px" onclick="repLimpiar()"><i class="bi bi-x-circle"></i></button></div>'
         +'</div>'
-        +'<div id="repExportBar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap"><div class="rep-tabs" style="display:flex;gap:6px;flex-wrap:wrap"><button class="rep-tab active" data-tab="ticket" onclick="repSwitch(\'ticket\')"><i class="bi bi-receipt"></i> Listados de Ventas Formato Ticket</button><button class="rep-tab" data-tab="folio" onclick="repSwitch(\'folio\')"><i class="bi bi-file-text"></i> Listados de Ventas Formato Folio</button><button class="rep-tab" data-tab="auditoria" onclick="repSwitch(\'auditoria\')"><i class="bi bi-shield-check"></i> Gestión, Control y Auditoría</button><button class="rep-tab" data-tab="contable" onclick="repSwitch(\'contable\')"><i class="bi bi-calculator"></i> Gestión Contable y Financiera</button></div><div class="rep-export" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select id="repExportTipo" class="form-select form-select-sm" style="width:auto;border-radius:8px"><option value="general">Métodos (CSV)</option><option value="personal">Meseros (CSV)</option><option value="zonas">Zonas (CSV)</option><option value="margen">Margen (CSV)</option><option value="mermas">Mermas (CSV)</option></select><button class="btn btn-sm" style="background:#10b981;color:#fff;border-radius:8px;font-weight:600" onclick="repExportar()"><i class="bi bi-download me-1"></i>Exportar</button><button class="btn btn-sm" style="background:#2563eb;color:#fff;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap" onclick="repAbrirCorreoModal()"><i class="bi bi-envelope"></i> Enviar por correo</button></div></div>'
+        +'<div id="repExportBar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap"><div class="rep-tabs" style="display:flex;gap:6px;flex-wrap:wrap"><button class="rep-tab active" data-tab="ticket" onclick="repSwitch(\'ticket\')"><i class="bi bi-receipt"></i> Listados de Ventas Formato Ticket</button><button class="rep-tab" data-tab="folio" onclick="repSwitch(\'folio\')"><i class="bi bi-file-text"></i> Listados de Ventas Formato Folio</button><button class="rep-tab" data-tab="auditoria" onclick="repSwitch(\'auditoria\')"><i class="bi bi-shield-check"></i> Gestión, Control y Auditoría</button><button class="rep-tab" data-tab="contable" onclick="repSwitch(\'contable\')"><i class="bi bi-calculator"></i> Gestión Contable y Financiera</button></div><div class="rep-export" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select id="repExportTipo" class="form-select form-select-sm" style="width:auto;border-radius:8px"><option value="general">Métodos (CSV)</option><option value="personal">Meseros (CSV)</option><option value="zonas">Zonas (CSV)</option><option value="margen">Margen (CSV)</option><option value="mermas">Mermas (CSV)</option></select><button class="btn btn-sm" style="background:#10b981;color:#fff;border-radius:8px;font-weight:600" onclick="repExportar()"><i class="bi bi-download me-1"></i>Exportar</button><button id="repBtnCorreo" class="btn btn-sm" title="Solo Administrador y Gerente" style="background:#2563eb;color:#fff;border-radius:8px;font-weight:700;display:none;align-items:center;gap:6px;white-space:nowrap" onclick="repAbrirCorreoModal()"><i class="bi bi-envelope"></i> Enviar por correo</button></div></div>'
         +'<div id="repContent"></div>';
     repAddStyles();
     var hoy=new Date(); var ini=new Date(); ini.setDate(hoy.getDate()-30);
@@ -65,6 +65,7 @@ function iniciarReportes(){
     repFiltros.fecha_fin=document.getElementById('repFf').value;
     repCargarOpciones();
     repSwitch('ticket');
+    repActualizarBotonCorreo();
 }
 function repAddStyles(){ if(document.getElementById('repStyles')) return; var s=document.createElement('style'); s.id='repStyles'; s.textContent=".rep-tab{padding:8px 12px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;font-weight:600;font-size:.78rem;color:#334155;cursor:pointer;white-space:nowrap}.rep-tab.active{background:#0f172a;color:#fff;border-color:#0f172a}.rep-card{border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff}.rep-card-h{padding:12px 14px;background:#0f172a;color:#f8fafc;font-weight:700;font-size:.82rem;display:flex;justify-content:space-between;align-items:center}.rep-opt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}@media(max-width:900px){.rep-opt-grid{grid-template-columns:1fr}}.rep-opt{border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:8px 10px;display:flex;align-items:center;gap:8px;min-height:48px}.rep-num{width:26px;height:26px;border-radius:50%;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.72rem;flex-shrink:0}.rep-opt-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}.rep-btn-ver{background:#0f172a;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer}.rep-btn-print{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:5px 8px;cursor:pointer}"
 +".rep-mhead{padding:18px 20px;background:#0f172a;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px}"
@@ -475,7 +476,42 @@ function repCorreoToggleAll(){
   document.querySelectorAll('.repCorreoRep').forEach(function(c){ c.checked = all.checked; });
   repCorreoOnChange();
 }
+// ---------------------------------------------------------
+// Acceso restringido: solo Administrador (id_rol 1) y Gerente (id_rol 2).
+// El botón se oculta para el resto de roles segun GET /api/sesion.
+// ---------------------------------------------------------
+var repCorreoRolOk = false;
+function repRolCorreoPermitido(u){
+  if(!u) return false;
+  if(Number(u.id_rol)===1 || Number(u.id_rol)===2) return true;
+  var r = String(u.rol||'').toLowerCase().trim();
+  return r==='administrador' || r==='admin' || r==='gerente';
+}
+function repActualizarBotonCorreo(cb){
+  var btn = document.getElementById('repBtnCorreo');
+  var aplicar = function(ok){
+    repCorreoRolOk = !!ok;
+    if(btn) btn.style.display = ok ? 'inline-flex' : 'none';
+    if(ok){ try{ repFetchCorreoConfig(); }catch(e){} }
+    if(cb) cb(repCorreoRolOk);
+  };
+  fetch(repBuildUrl('/api/sesion'), { headers:{'Accept':'application/json'}, credentials:'same-origin' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ aplicar(d && d.autenticado && repRolCorreoPermitido(d.usuario)); })
+    .catch(function(){
+      var u = null;
+      try{ u = (typeof usuario!=='undefined' && usuario) ? usuario : JSON.parse(localStorage.getItem('usuario')||'null'); }catch(e){ u = null; }
+      aplicar(repRolCorreoPermitido(u));
+    });
+}
 function repAbrirCorreoModal(){
+  if(!repCorreoRolOk){
+    repActualizarBotonCorreo(function(ok){
+      if(ok) repAbrirCorreoModal();
+      else repError('Solo el rol Administrador y el rol Gerente pueden enviar reportes por correo.');
+    });
+    return;
+  }
   var pre = repCorreoPreseleccion();
   var nPre = pre.length;
   var filtrosTxt = [];
@@ -650,5 +686,5 @@ function repEnviarCorreo(){
       repError('Error de conexión con el servidor: '+(e.message||''));
     });
 }
-// precargar configuración de correo al iniciar reportes
-try{ repFetchCorreoConfig(); }catch(e){}
+// La precarga de config de correo se hace en repActualizarBotonCorreo()
+// solo si el rol de la sesion (Administrador/Gerente) esta autorizado.

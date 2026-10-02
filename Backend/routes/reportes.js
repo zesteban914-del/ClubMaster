@@ -26,8 +26,13 @@ function toCsv(rows, cols){
 const express = require('express');
 const reportesController = require('../controllers/reportesController');
 const { correoReportesLimiter } = require('../middlewares/rateLimiter');
-const { requierePermiso, requiereAutenticacion } = require('../middlewares/authMiddleware');
+const { requireRole } = require('../middlewares/authMiddleware');
 const router = express.Router();
+
+// Solo Administrador (id_rol 1) y Gerente (id_rol 2) pueden enviar
+// reportes por correo. El permiso ver_reportes NO se toca: sigue
+// gobernando el resto de rutas de reportes.
+const soloCorreoReportes = requireRole(1, 2, 'Administrador', 'Gerente');
 
 // ---------------------------------------------------------
 // DESACTIVADO: envio por WhatsApp (el proveedor no funciona).
@@ -38,12 +43,12 @@ const router = express.Router();
 // router.post('/reportes/enviar-whatsapp', reportesController.enviarWhatsApp);
 
 // Configuracion del modal de correo (correo del admin + proveedor activo)
-router.get('/reportes/config-correo', requiereAutenticacion, reportesController.configCorreo);
+router.get('/reportes/config-correo', soloCorreoReportes, reportesController.configCorreo);
 
 // Envio de reportes PDF/Excel como adjuntos.
-// Solo con permiso de reportes (administrador/gerente) y con limite de peticiones.
+// Restringido por ROL (Admin/Gerente) y con limite de peticiones.
 router.post('/reportes/enviar-correo',
-    requierePermiso('ver_reportes'),
+    soloCorreoReportes,
     correoReportesLimiter,
     reportesController.enviarCorreo
 );
