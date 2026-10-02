@@ -55,9 +55,41 @@ module.exports = function(app, db, security, mailer, authMiddleware) {
             res.json({success:true, exito:true, mensaje:'PIN válido', usuario:{id_usuario:usuario.id_usuario, nombre:usuario.nombre}});
         }catch(e){ res.status(500).json({success:false,mensaje:e.message}); }
     });
-    app.post('/logout', (req, res) => {
-        if (req.session) req.session.destroy(() => { res.clearCookie('clubmaster.sid'); res.json({ exito: true, mensaje: 'Sesion cerrada' }); });
-        else res.json({ exito: true, mensaje: 'Sesion cerrada' });
+    // Cierre de sesion: responde SIEMPRE JSON, nunca hace redirect (el
+    // frontend en Vercel y el backend en Railway son dominios distintos;
+    // redirigir desde aqui dejaria al navegador en una URL del backend).
+    // El frontend debe redirigir por su cuenta a su propio login.
+    function handleLogout(req, res) {
+        // Opciones identicas a las de creacion en
+        // middlewares/authMiddleware.js (crearSesion): sin ellas el
+        // navegador ignora el borrado de la cookie cross-site
+        // (SameSite=None + Secure en produccion) y la sesion no se cierra.
+        const esProduccion = process.env.NODE_ENV === 'production';
+        const mismoSitio = String(
+            process.env.COOKIE_SAMESITE || (esProduccion ? 'none' : 'lax')
+        ).toLowerCase();
+        const opcionesCookie = {
+            httpOnly: true,
+            secure: esProduccion,
+            sameSite: mismoSitio,
+            path: '/'
+        };
+        function responder() {
+            res.clearCookie('clubmaster.sid', opcionesCookie);
+            return res.json({ exito: true, success: true, mensaje: 'Sesion cerrada' });
+        }
+        if (req.session) req.session.destroy(function() { return responder(); });
+        else return responder();
+    }
+    app.post('/logout', handleLogout);
+    // Alias bajo /api para llamadas con API_BASE + '/api/...'. Sigue siendo
+    // JSON sin redirect; es ruta publica (ver RUTAS_API_PUBLICAS en
+    // server.js) para que el cierre sea idempotente aun con sesion expirada.
+    app.post('/api/auth/logout', handleLogout);
+    // Si el navegador cae aqui por navegacion directa (GET), no redirigir
+    // al frontend (el backend no conoce su URL): JSON informativo.
+    app.get('/logout', function(req, res) {
+        return res.status(405).json({ exito: false, success: false, mensaje: 'Usa POST /logout para cerrar sesion.' });
     });
     app.get('/api/sesion', async (req, res) => {
         if (req.session && req.session.usuario) {

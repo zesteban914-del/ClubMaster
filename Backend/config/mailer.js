@@ -86,7 +86,7 @@ async function enviarReporteCierre(destinatario, reporte){
                     <div style="display:flex;justify-content:space-between;font-weight:800;color:${diffColor}"><span>DIFERENCIA [${diffLabel}]</span><span>${(diff>0?'+':'')+formatearCOP(diff)}</span></div>
                 </div>
                 <div style="font-size:11px;color:#64748B;display:flex;justify-content:space-between"><span>Apertura: ${j.usuario_apertura||'--'}</span><span>Cierre: ${j.usuario_cierre||'--'}</span></div>
-                <div style="margin-top:16px;text-align:center"><a href="${process.env.APP_URL||'http://localhost:3000'}/api/jornada/${j.id_jornada}/reporte" style="background:#F59E0B;color:#1a1a2e;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:12px">Ver reporte completo</a></div>
+                <div style="margin-top:16px;text-align:center"><a href="${(process.env.APP_URL||'http://localhost:3000').replace(/\/+$/, '')}/api/jornada/${j.id_jornada}/reporte" style="background:#F59E0B;color:#1a1a2e;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:12px">Ver reporte completo</a></div>
                 <div style="margin-top:12px;font-size:10px;color:#94A3B8;text-align:center">Backup automático generado al cierre en /backups/cierre-${j.id_jornada||''}-*.sql</div>
             </div>
         </div>`;
@@ -99,7 +99,10 @@ async function enviarReporteCierre(destinatario, reporte){
 // Envia un correo con el enlace de restablecimiento de contrasena.
 // Si SMTP no esta configurado, imprime el enlace en consola.
 async function enviarCorreoRecuperacion(correoDestino, nombre, token) {
-    const base = process.env.APP_URL || 'http://localhost:3000';
+    // Pagina que abre el usuario: vive en el FRONTEND (Vercel). APP_URL es
+    // el BACKEND (Railway) y se mantiene solo como respaldo, porque alli
+    // tambien se sirve copia estatica del frontend.
+    const base = (process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
     const enlace = `${base}/reiniciar-contrasena?token=${token}`;
 
     const asunto = 'Restablecer contraseña — ClubMaster';

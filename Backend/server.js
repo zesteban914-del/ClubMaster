@@ -103,7 +103,7 @@ app.use((req,res,next)=>{
 app.use(crearSesion(env.secretSesion()));
 
 const RUTAS_API_PUBLICAS = [
-    '/auth/login', '/auth/pin-login',
+    '/auth/login', '/auth/pin-login', '/auth/logout',
     '/registro', '/recuperar-contrasena', '/auth/recuperar-password', '/reiniciar-contrasena',
     '/sesion',
     '/2fa/setup', '/2fa/enable', '/2fa/disable', '/2fa/status'

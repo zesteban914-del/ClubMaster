@@ -1256,12 +1256,19 @@ function mostrarAlertaModal(tipo, msg) {
 
 function cerrarSesion() {
     // Destruye la sesion en el servidor (invalida la cookie) y limpia el cliente.
-    fetch(API_BASE + '/logout', {
-        method: 'POST',
-        credentials: 'include'
-    }).catch(function() {});
-    localStorage.removeItem('usuario');
-    window.location.href = (typeof API_BASE!=='undefined'&&API_BASE?API_BASE:'')+'/';
+    // La redireccion es RELATIVA al propio frontend (Vercel en produccion):
+    // nunca usar API_BASE aqui, porque apunta al backend (Railway) y dejaria
+    // al navegador en una URL del backend en vez del login del frontend.
+    function irAlLogin() {
+        localStorage.removeItem('usuario');
+        window.location.href = '/index.html';
+    }
+    try {
+        fetch(API_BASE + '/logout', {
+            method: 'POST',
+            credentials: 'include'
+        }).catch(function() {}).finally(function() { irAlLogin(); });
+    } catch (e) { irAlLogin(); }
 }
 
 // =========================================================
