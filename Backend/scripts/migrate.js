@@ -577,6 +577,45 @@ async function migrate() {
         `);
         console.log('Tabla roles verificada/creada.');
         await agregarColumna(connection, 'roles', 'descripcion', "descripcion VARCHAR(200) DEFAULT ''");
+        // ---- Roles base idempotentes (base vacia: Railway/MySQL nuevo) ----
+        // /api/registro crea usuarios con id_rol=3 (Mesero) y esAdminSesion exige
+        // id_rol=1 o nombre Administrador/Admin: sin estos rows el usuario queda
+        // "Sin rol" (usuario-service devuelve 'Sin rol' cuando el JOIN falla).
+        // Ids fijos = Backend/scripts/seed.js (1 Administrador, 2 Gerente,
+        // 3 Mesero, 4 Cajero) + 5 Bartender (seedAllData.js). El SELECT previo
+        // evita duplicar por nombre cuando el id fijo ya esta ocupado por otro
+        // nombre (roles.nombre no tiene UNIQUE, asi que ON DUPLICATE KEY solo
+        // protege la PK); reejecutar es seguro (no-op).
+        const rolesBase = [
+            [1, 'Administrador', 'Acceso total'],
+            [2, 'Gerente', 'Supervision'],
+            [3, 'Mesero', 'Atencion mesas'],
+            [4, 'Cajero', 'Caja y cobros'],
+            [5, 'Bartender', 'Barra y Speed Bar']
+        ];
+        for (const [idFijo, nombreRol, descRol] of rolesBase) {
+            try {
+                const [ex] = await connection.query(
+                    'SELECT id_rol FROM roles WHERE LOWER(nombre) = LOWER(?) LIMIT 1',
+                    [nombreRol]
+                );
+                if (ex.length === 0) {
+                    try {
+                        await connection.query(
+                            'INSERT INTO roles (id_rol, nombre, descripcion) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE nombre = nombre',
+                            [idFijo, nombreRol, descRol]
+                        );
+                    } catch (e) {
+                        // Instalaciones antiguas sin columna descripcion.
+                        await connection.query(
+                            'INSERT INTO roles (id_rol, nombre) VALUES (?, ?) ON DUPLICATE KEY UPDATE nombre = nombre',
+                            [idFijo, nombreRol]
+                        );
+                    }
+                }
+            } catch (e) { console.log(`Aviso (rol base ${nombreRol}): ${e.message}`); }
+        }
+        console.log('Roles base verificados (1 Administrador, 2 Gerente, 3 Mesero, 4 Cajero, 5 Bartender).');
         await connection.query(`
             CREATE TABLE IF NOT EXISTS permisos (
                 id_permiso INT AUTO_INCREMENT PRIMARY KEY,
