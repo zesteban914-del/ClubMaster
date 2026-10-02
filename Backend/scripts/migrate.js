@@ -56,6 +56,224 @@ async function migrate() {
         `);
         console.log('Tabla jornadas verificada/creada.');
 
+        // ============================================================
+        // TABLAS BASE FALTANTES (base vacia: Railway/MySQL nuevo)
+        // Estas tablas NUNCA se creaban en ningun .sql ni script: solo
+        // se hacia ALTER sobre ellas, asi que una base vacia fallaba
+        // con "Table 'railway.pedidos' doesn't exist" (igual zonas y
+        // unidades_medida, cuyo UNIQUE se intentaba antes de crearlas).
+        // Se crean AQUI, ANTES de cualquier ALTER/UNIQUE/FK que las
+        // referencie, en orden de dependencias y SIN claves foraneas
+        // (las tablas historicas nunca tuvieron FK: permite id_mesa
+        // NULL en ventas de mostrador y evita fallos de orden).
+        // Todo es CREATE TABLE IF NOT EXISTS + columnas en superconjunto
+        // (incluye alias precio/precio_venta y costo/precio_costo que
+        // varian por instalacion): reejecutar es seguro (no-op).
+        // ============================================================
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS roles (
+                id_rol INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(50) NOT NULL
+            )
+        `);
+        console.log('Tabla roles verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(100) NOT NULL,
+                correo VARCHAR(100) UNIQUE,
+                contrasena VARCHAR(100),
+                id_rol INT,
+                activo TINYINT(1) DEFAULT 1,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Tabla usuarios verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS categorias (
+                id_categoria INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(100) NOT NULL UNIQUE
+            )
+        `);
+        console.log('Tabla categorias verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS productos (
+                id_producto INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(150) NOT NULL,
+                precio DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                precio_venta DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                precio_costo DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                costo DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                stock DECIMAL(12,2) NULL DEFAULT 0.00,
+                stock_minimo DECIMAL(12,2) NULL DEFAULT 5.00,
+                categoria VARCHAR(100) DEFAULT 'General',
+                id_categoria INT NULL,
+                unidad VARCHAR(20) DEFAULT 'Unidad',
+                unidad_medida VARCHAR(20) DEFAULT 'Unidad',
+                factor_conversion DECIMAL(10,2) DEFAULT NULL,
+                codigo_barras VARCHAR(60) NULL,
+                iva_pct DECIMAL(5,2) DEFAULT NULL,
+                ico_pct DECIMAL(5,2) DEFAULT NULL,
+                descripcion TEXT NULL,
+                imagen LONGTEXT NULL,
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                usa_stock_bodega TINYINT(1) NOT NULL DEFAULT 0,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Tabla productos verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS zonas (
+                id_zona INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(60) NOT NULL,
+                descripcion VARCHAR(200) DEFAULT '',
+                color VARCHAR(20) DEFAULT '#3b82f6',
+                orden INT DEFAULT 0,
+                activa TINYINT(1) NOT NULL DEFAULT 1
+            )
+        `);
+        console.log('Tabla zonas verificada/creada (base, antes del UNIQUE).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS mesas (
+                id_mesa INT AUTO_INCREMENT PRIMARY KEY,
+                numero VARCHAR(20) NOT NULL,
+                nombre VARCHAR(80) NULL,
+                capacidad INT NOT NULL DEFAULT 4,
+                estado ENUM('Disponible','Ocupada','Reservada','Cierre','Inactiva') NOT NULL DEFAULT 'Disponible',
+                zona VARCHAR(60) DEFAULT 'VIP',
+                id_mesero INT NULL,
+                fecha_ocupacion DATETIME NULL,
+                id_mesa_maestra INT NULL,
+                activo TINYINT(1) NOT NULL DEFAULT 1
+            )
+        `);
+        console.log('Tabla mesas verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS pedidos (
+                id_pedido INT AUTO_INCREMENT PRIMARY KEY,
+                id_mesa INT NULL,
+                id_usuario INT NULL,
+                id_mesero INT NULL,
+                id_cajero INT NULL,
+                id_jornada INT NULL,
+                id_factura INT NULL,
+                estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+                total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                metodo_pago VARCHAR(30) NULL,
+                sub_metodo_pago VARCHAR(50) NULL,
+                referencia_pago VARCHAR(100) NULL,
+                descuento DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                es_cortesia TINYINT(1) NOT NULL DEFAULT 0,
+                propina DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                clave_cliente VARCHAR(64) NULL,
+                timestamp_pedido DATETIME NULL,
+                timestamp_despacho DATETIME NULL,
+                KEY idx_pedidos_mesa (id_mesa),
+                KEY idx_pedidos_jornada (id_jornada),
+                KEY idx_pedidos_estado (estado)
+            )
+        `);
+        console.log('Tabla pedidos verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS detalle_pedido (
+                id_detalle INT AUTO_INCREMENT PRIMARY KEY,
+                id_pedido INT NOT NULL,
+                id_producto INT NOT NULL,
+                cantidad DECIMAL(12,2) NOT NULL DEFAULT 1,
+                precio_unitario DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                observaciones TEXT NULL,
+                presentacion VARCHAR(40) DEFAULT 'Trago / Copa',
+                id_nota_preparacion INT NULL,
+                estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+                id_bodega INT NULL,
+                id_usuario_agrega INT NULL,
+                KEY idx_detalle_pedido (id_pedido),
+                KEY idx_detalle_producto (id_producto)
+            )
+        `);
+        console.log('Tabla detalle_pedido verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS unidades_medida (
+                id_unidad INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(40) NOT NULL,
+                abreviacion VARCHAR(15) NOT NULL DEFAULT '',
+                tipo VARCHAR(25) NOT NULL DEFAULT 'Unidad'
+            )
+        `);
+        console.log('Tabla unidades_medida verificada/creada (base, antes del UNIQUE).');
+
+        // ---- Facturas unificadas (antes solo se creaban bajo demanda en
+        // routes/productos.js:ensureFacturasTables; en base vacia el modulo
+        // de facturacion fallaba antes del primer cobro) ----
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS facturas (
+                id_factura INT AUTO_INCREMENT PRIMARY KEY,
+                id_mesa INT NOT NULL,
+                numero_factura VARCHAR(30) NULL,
+                fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                id_usuario INT NULL,
+                id_mesero INT NULL,
+                id_cajero INT NULL,
+                id_usuario_registra INT NULL,
+                id_jornada INT NULL,
+                subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                descuento DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                propina DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                impuestos DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                metodo_pago VARCHAR(50) NULL,
+                sub_metodo_pago VARCHAR(50) NULL,
+                referencia_pago VARCHAR(100) NULL,
+                es_cortesia TINYINT(1) NOT NULL DEFAULT 0,
+                estado VARCHAR(20) NOT NULL DEFAULT 'Pagada',
+                clave_factura VARCHAR(64) NULL,
+                KEY idx_facturas_mesa (id_mesa),
+                KEY idx_facturas_fecha (fecha),
+                KEY idx_facturas_jornada (id_jornada)
+            )
+        `);
+        console.log('Tabla facturas verificada/creada (base).');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS detalle_factura (
+                id_detalle INT AUTO_INCREMENT PRIMARY KEY,
+                id_factura INT NOT NULL,
+                id_producto INT NOT NULL,
+                producto_nombre VARCHAR(150) NOT NULL DEFAULT '',
+                cantidad DECIMAL(12,2) NOT NULL DEFAULT 0,
+                precio_unitario DECIMAL(12,2) NOT NULL DEFAULT 0,
+                subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+                presentacion VARCHAR(40) NULL,
+                observaciones TEXT NULL,
+                KEY idx_det_factura (id_factura),
+                CONSTRAINT fk_det_factura FOREIGN KEY (id_factura) REFERENCES facturas(id_factura) ON DELETE CASCADE
+            )
+        `);
+        console.log('Tabla detalle_factura verificada/creada (base).');
+
+        // ---- Idempotencia anti-duplicados en facturas (igual que
+        // uq_pedidos_clave_cliente): evita facturas dobles por reintento ----
+        try {
+            const [exF] = await connection.query(
+                `SELECT COUNT(*) AS c FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'facturas' AND INDEX_NAME = 'uq_facturas_clave'`,
+                [nombreBaseDatosReal()]
+            );
+            if (exF[0].c === 0) {
+                await connection.query(`ALTER TABLE facturas ADD UNIQUE INDEX uq_facturas_clave (clave_factura)`);
+                console.log('Indice unico uq_facturas_clave creado.');
+            }
+        } catch (e) { console.log('Aviso indice clave_factura: ' + e.message); }
+
         // ---- Columnas de auditoria en jornadas ----
         await agregarColumna(connection, 'jornadas', 'fecha', 'fecha DATETIME NULL DEFAULT CURRENT_TIMESTAMP');
         await agregarColumna(connection, 'jornadas', 'fecha_cierre', 'fecha_cierre DATETIME NULL');
@@ -305,11 +523,27 @@ async function migrate() {
         await agregarColumnaProducto('unidad_medida', `unidad_medida VARCHAR(20) DEFAULT 'Unidad'`);
         await agregarColumnaProducto('factor_conversion', `factor_conversion DECIMAL(10,2) DEFAULT NULL`);
         await agregarColumnaProducto('precio', `precio DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
+        await agregarColumnaProducto('precio_venta', `precio_venta DECIMAL(12,2) NOT NULL DEFAULT 0.00`);
         await agregarColumnaProducto('precio_costo', `precio_costo DECIMAL(10,2) DEFAULT 0.00`);
+        await agregarColumnaProducto('costo', `costo DECIMAL(12,2) NOT NULL DEFAULT 0.00`);
         await agregarColumnaProducto('descripcion', `descripcion TEXT NULL`);
         await agregarColumnaProducto('imagen', `imagen LONGTEXT NULL`);
         try { await connection.query('ALTER TABLE productos MODIFY COLUMN stock DECIMAL(12,2) NULL DEFAULT 0.00'); } catch (e) {}
         try { await connection.query('ALTER TABLE stock_bodegas MODIFY COLUMN stock DECIMAL(10,2) NOT NULL DEFAULT 0.00'); } catch (e) {}
+
+        // ---- Sincronizar alias de precio/costo entre instalaciones ----
+        // Unas instalaciones usan precio/precio_costo y otras
+        // precio_venta/costo; el codigo lee ambos via
+        // helpers/column-detection.js pero jornada-service lee
+        // precio_venta directo. Copiar solo donde un lado esta en 0:
+        // idempotente y no-op en base vacia o ya sincronizada.
+        try {
+            await connection.query(`UPDATE productos SET precio_venta = precio WHERE (precio_venta IS NULL OR precio_venta = 0) AND precio <> 0`);
+            await connection.query(`UPDATE productos SET precio = precio_venta WHERE (precio IS NULL OR precio = 0) AND precio_venta <> 0`);
+            await connection.query(`UPDATE productos SET precio_costo = costo WHERE (precio_costo IS NULL OR precio_costo = 0) AND costo <> 0`);
+            await connection.query(`UPDATE productos SET costo = precio_costo WHERE (costo IS NULL OR costo = 0) AND precio_costo <> 0`);
+            console.log('Alias precio/precio_venta y costo/precio_costo sincronizados.');
+        } catch (e) { console.log('Aviso (sincronizar alias de precio): ' + e.message); }
 
         // Crear tabla categorias
         await connection.query(`
