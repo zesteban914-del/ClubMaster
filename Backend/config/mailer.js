@@ -146,4 +146,29 @@ async function enviarCorreoRecuperacion(correoDestino, nombre, token) {
     return { mode: 'smtp' };
 }
 
-module.exports = { enviarCorreoRecuperacion, enviarReporteCierre };
+module.exports = { enviarCorreoRecuperacion, enviarReporteCierre, enviarCorreoAdjuntos, obtenerTransporter };
+
+// ---------------------------------------------------------
+// Envio de un correo con archivos adjuntos (reportes PDF/Excel).
+// Devuelve null si SMTP no esta configurado: quien llama decide
+// el mensaje (nunca un error 500 silencioso).
+// ---------------------------------------------------------
+async function enviarCorreoAdjuntos(destinatario, { asunto, texto, html, adjuntos }) {
+    const t = obtenerTransporter();
+    if (!t) return null;
+
+    const fromUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const attachments = (adjuntos || []).map(function (a) {
+        return { filename: a.nombre, content: a.buffer, contentType: a.mimeType || 'application/octet-stream' };
+    });
+
+    await t.sendMail({
+        from: `"ClubMaster" <${fromUser}>`,
+        to: destinatario,
+        subject: asunto,
+        text: texto,
+        html: html,
+        attachments: attachments
+    });
+    return { mode: 'smtp' };
+}

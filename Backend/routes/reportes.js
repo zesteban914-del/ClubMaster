@@ -25,9 +25,28 @@ function toCsv(rows, cols){
 }
 const express = require('express');
 const reportesController = require('../controllers/reportesController');
-// REGISTRAR LA RUTA EN EXPRESS - Spec: router.post('/reportes/enviar-whatsapp', reportesController.enviarWhatsApp)
+const { correoReportesLimiter } = require('../middlewares/rateLimiter');
+const { requierePermiso, requiereAutenticacion } = require('../middlewares/authMiddleware');
 const router = express.Router();
-router.post('/reportes/enviar-whatsapp', reportesController.enviarWhatsApp);
+
+// ---------------------------------------------------------
+// DESACTIVADO: envio por WhatsApp (el proveedor no funciona).
+// Se reemplaza por POST /api/reportes/enviar-correo.
+// El codigo del controlador y services/whatsapp-service.js se
+// conservan porque otras rutas (/api/whatsapp/*) los usan.
+// ---------------------------------------------------------
+// router.post('/reportes/enviar-whatsapp', reportesController.enviarWhatsApp);
+
+// Configuracion del modal de correo (correo del admin + proveedor activo)
+router.get('/reportes/config-correo', requiereAutenticacion, reportesController.configCorreo);
+
+// Envio de reportes PDF/Excel como adjuntos.
+// Solo con permiso de reportes (administrador/gerente) y con limite de peticiones.
+router.post('/reportes/enviar-correo',
+    requierePermiso('ver_reportes'),
+    correoReportesLimiter,
+    reportesController.enviarCorreo
+);
 
 module.exports = function(app, db) {
     // Montar router bajo prefijo /api para que URL completa sea POST /api/reportes/enviar-whatsapp

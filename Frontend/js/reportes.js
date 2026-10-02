@@ -55,7 +55,7 @@ function iniciarReportes(){
         +'<div style="flex:1;min-width:160px"><label style="font-size:.7rem;font-weight:800;color:#475569;text-transform:uppercase">Cajero (Cobró)</label><select id="repCajero" class="form-select form-select-sm" style="border-radius:8px"><option value="">Todos</option></select></div>'
         +'<div style="display:flex;gap:6px;align-items:end"><button class="btn btn-sm" style="background:#0f172a;color:#fff;border-radius:8px;padding:7px 14px;font-weight:600" onclick="repAplicarFiltros()"><i class="bi bi-search me-1"></i>Filtrar</button><button class="btn btn-sm btn-outline-secondary" style="border-radius:8px" onclick="repLimpiar()"><i class="bi bi-x-circle"></i></button></div>'
         +'</div>'
-        +'<div id="repExportBar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap"><div class="rep-tabs" style="display:flex;gap:6px;flex-wrap:wrap"><button class="rep-tab active" data-tab="ticket" onclick="repSwitch(\'ticket\')"><i class="bi bi-receipt"></i> Listados de Ventas Formato Ticket</button><button class="rep-tab" data-tab="folio" onclick="repSwitch(\'folio\')"><i class="bi bi-file-text"></i> Listados de Ventas Formato Folio</button><button class="rep-tab" data-tab="auditoria" onclick="repSwitch(\'auditoria\')"><i class="bi bi-shield-check"></i> Gestión, Control y Auditoría</button><button class="rep-tab" data-tab="contable" onclick="repSwitch(\'contable\')"><i class="bi bi-calculator"></i> Gestión Contable y Financiera</button></div><div class="rep-export" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select id="repExportTipo" class="form-select form-select-sm" style="width:auto;border-radius:8px"><option value="general">Métodos (CSV)</option><option value="personal">Meseros (CSV)</option><option value="zonas">Zonas (CSV)</option><option value="margen">Margen (CSV)</option><option value="mermas">Mermas (CSV)</option></select><button class="btn btn-sm" style="background:#10b981;color:#fff;border-radius:8px;font-weight:600" onclick="repExportar()"><i class="bi bi-download me-1"></i>Exportar</button><button class="btn btn-sm" style="background:#25D366;color:#fff;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:6px" onclick="repAbrirWhatsAppModal()"><i class="bi bi-whatsapp"></i> Enviar por WhatsApp</button></div></div>'
+        +'<div id="repExportBar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap"><div class="rep-tabs" style="display:flex;gap:6px;flex-wrap:wrap"><button class="rep-tab active" data-tab="ticket" onclick="repSwitch(\'ticket\')"><i class="bi bi-receipt"></i> Listados de Ventas Formato Ticket</button><button class="rep-tab" data-tab="folio" onclick="repSwitch(\'folio\')"><i class="bi bi-file-text"></i> Listados de Ventas Formato Folio</button><button class="rep-tab" data-tab="auditoria" onclick="repSwitch(\'auditoria\')"><i class="bi bi-shield-check"></i> Gestión, Control y Auditoría</button><button class="rep-tab" data-tab="contable" onclick="repSwitch(\'contable\')"><i class="bi bi-calculator"></i> Gestión Contable y Financiera</button></div><div class="rep-export" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select id="repExportTipo" class="form-select form-select-sm" style="width:auto;border-radius:8px"><option value="general">Métodos (CSV)</option><option value="personal">Meseros (CSV)</option><option value="zonas">Zonas (CSV)</option><option value="margen">Margen (CSV)</option><option value="mermas">Mermas (CSV)</option></select><button class="btn btn-sm" style="background:#10b981;color:#fff;border-radius:8px;font-weight:600" onclick="repExportar()"><i class="bi bi-download me-1"></i>Exportar</button><button class="btn btn-sm" style="background:#2563eb;color:#fff;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap" onclick="repAbrirCorreoModal()"><i class="bi bi-envelope"></i> Enviar por correo</button></div></div>'
         +'<div id="repContent"></div>';
     repAddStyles();
     var hoy=new Date(); var ini=new Date(); ini.setDate(hoy.getDate()-30);
@@ -112,7 +112,7 @@ function repAddStyles(){ if(document.getElementById('repStyles')) return; var s=
 +".rep-opt>span:last-child{flex:1 1 100%;display:flex;gap:8px;min-width:0}"
 +".rep-opt>span:last-child .rep-btn-ver{flex:2;min-height:44px;font-size:.8rem}"
 +".rep-opt>span:last-child .rep-btn-print{flex:1;min-height:44px}"
-+"} details>summary{list-style:none} details>summary::-webkit-details-marker{display:none} details>summary::marker{content:''} @media print{ #repModal{position:static !important; background:#fff !important} #repModalBox{box-shadow:none !important; max-height:none !important; overflow:visible !important} details{open:true} }"; document.head.appendChild(s); }
++"} details>summary{list-style:none} details>summary::-webkit-details-marker{display:none} details>summary::marker{content:''} .rep-mail-grupo{margin-bottom:10px}.rep-mail-gh{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f1f5f9;border:1px solid #e2e8f0;padding:6px 8px;border-radius:8px;flex-wrap:wrap}.rep-mail-gh-t{font-weight:800;font-size:.7rem;color:#334155;display:flex;align-items:center;gap:6px;min-width:0}.rep-mail-all{font-size:.68rem;font-weight:700;color:#475569;display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;min-height:32px}.rep-mail-lista{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding-top:6px}.rep-mail-item{display:flex;gap:7px;align-items:flex-start;border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:7px 8px;cursor:pointer;font-size:.73rem;line-height:1.25;color:#334155;min-height:38px}.rep-mail-item:hover{border-color:#93c5fd;background:#f8fbff}.rep-mail-item input{margin:2px 0 0;flex-shrink:0;accent-color:#2563eb;width:15px;height:15px}.rep-mail-item.rep-mail-on{border-color:#2563eb;background:#eff6ff}@media(max-width:560px){.rep-mail-lista{grid-template-columns:1fr}.rep-mail-gh{flex-direction:column;align-items:flex-start;gap:4px}} @media print{ #repModal{position:static !important; background:#fff !important} #repModalBox{box-shadow:none !important; max-height:none !important; overflow:visible !important}  details{open:true} }"; document.head.appendChild(s); }
 function repCargarOpciones(){ fetch(API_REPORTES+'/api/reportes/opciones').then(function(r){return r.json();}).then(function(d){ if(!d.success){ repToast('No se pudieron cargar jornadas/meseros'); return; } var sj=document.getElementById('repJornada'); if(sj){ sj.innerHTML='<option value="">Todas</option>'; d.jornadas.forEach(function(j){ var o=document.createElement('option'); o.value=j.id_jornada; o.textContent='#'+j.id_jornada+' '+(j.fecha_apertura||'').toString().substring(0,10)+' '+j.estado; sj.appendChild(o); }); } var sm=document.getElementById('repMesero'); if(sm){ sm.innerHTML='<option value="">Todos</option>'; d.meseros.forEach(function(u){ var o=document.createElement('option'); o.value=u.id_usuario; o.textContent=u.nombre; sm.appendChild(o); }); } var sc=document.getElementById('repCajero'); if(sc){ sc.innerHTML='<option value="">Todos</option>'; d.meseros.forEach(function(u){ var o=document.createElement('option'); o.value=u.id_usuario; o.textContent=u.nombre; sc.appendChild(o); }); } }).catch(function(){ repToast('Sin conexión al cargar filtros de reportes'); }); }
 function repAplicarFiltros(){ var fi=document.getElementById('repFi').value||''; var ff=document.getElementById('repFf').value||''; var jj=document.getElementById('repJornada').value||''; var mm=document.getElementById('repMesero').value||''; var cc=document.getElementById('repCajero').value||''; if(fi&&ff&&fi>ff){ repError('Rango invertido: Desde mayor que Hasta'); return; } if(jj&&!/^\d+$/.test(jj)){ repError('Jornada inválida'); return; } if(mm&&!/^\d+$/.test(mm)){ repError('Empleado inválido'); return; } if(cc&&!/^\d+$/.test(cc)){ repError('Cajero inválido'); return; } if(fi&&ff){ var dias=(new Date(ff)-new Date(fi))/86400000; if(dias>366){ repError('Rango máximo 366 días'); return; } } repFiltros.fecha_inicio=fi; repFiltros.fecha_fin=ff; repFiltros.id_jornada=jj; repFiltros.id_mesero=mm; repFiltros.id_cajero=cc; repCache={general:null,personal:null,inventario:null}; repSwitch(repTab); }
 function repLimpiar(){ document.getElementById('repFi').value=''; document.getElementById('repFf').value=''; document.getElementById('repJornada').value=''; document.getElementById('repMesero').value=''; document.getElementById('repCajero').value=''; repAplicarFiltros(); }
@@ -217,6 +217,7 @@ function repRenderLive(data, cat, id){
  h+='</div>'; return h;
 }
 function repEjecutarReporte(cat,id,ticket){
+ repCurrentCat=cat; repCurrentId=id;
  var arr=REP_CATALOG[cat]||[]; var rep=arr.find(function(r){return r.id===id;}); if(!rep) return;
  var filtrosTxt=[]; if(repFiltros.fecha_inicio) filtrosTxt.push('Desde '+repFiltros.fecha_inicio); if(repFiltros.fecha_fin) filtrosTxt.push('Hasta '+repFiltros.fecha_fin); if(repFiltros.id_jornada) filtrosTxt.push('Jornada #'+repFiltros.id_jornada); if(repFiltros.id_mesero) filtrosTxt.push('Empleado #'+repFiltros.id_mesero); if(!filtrosTxt.length) filtrosTxt.push('Sin filtros - rango 30 dias');
  var formato=ticket? 'TICKET 80mm':'FOLIO / PANTALLA';
@@ -336,22 +337,22 @@ repRenderLive = function(data, cat, id){
   return wrap.outerHTML;
 };
 // =========================================================
-// WHATSAPP INTEGRATION - ClubMaster
-// =========================================================
-// WHATSAPP INTEGRATION - ClubMaster (v2: selector + compat)
-// ÚNICO botón superior; modal con TIPO DE REPORTE *
+// ENVIO DE REPORTES POR CORREO - ClubMaster
+// (reemplaza la integracion anterior con WhatsApp)
+// Un solo botón en la barra; modal con seleccion MULTIPLE
+// de reportes, asunto, mensaje y hasta 5 correos destino.
 // =========================================================
 var repCurrentCat = '';
 var repCurrentId = '';
-var repWAConfig = null;
-var repWALoading = false;
+var repCorreoConfig = null;
+var repCorreoLoading = false;
 
 function repToastSuccess(msg){
   try{ if(typeof mostrarToast==='function'){ mostrarToast('success', msg); return; } }catch(e){}
   try{ if(typeof mostrarAlerta==='function'){ mostrarAlerta('success', msg); return; } }catch(e){}
   repToast(msg);
 }
-function repBuildWAUrl(path){
+function repBuildUrl(path){
   var base = (typeof API_REPORTES!=='undefined' && API_REPORTES) ? String(API_REPORTES).trim() : '';
   if(!base) return path;
   if(base.endsWith('/')) base = base.slice(0,-1);
@@ -359,221 +360,295 @@ function repBuildWAUrl(path){
   if(base.endsWith('/api') && path.startsWith('/api')) return base + path.slice(4);
   return base + path;
 }
-function repFetchWAConfig(cb){
-  var url = repBuildWAUrl('/api/whatsapp/config');
+function repFetchCorreoConfig(cb){
+  var url = repBuildUrl('/api/reportes/config-correo');
   fetch(url, { headers:{'Accept':'application/json'}, credentials:'same-origin' }).then(function(r){
     return r.text().then(function(txt){
       var d; try{ d=JSON.parse(txt); }catch(e){
-        // si es HTML <!DOCTYPE, reportar amigable
         if(txt.trim().startsWith('<!DOCTYPE') || txt.trim().startsWith('<html')) d={success:false, mensaje:'Respuesta HTML ('+r.status+'): endpoint no encontrado'};
         else d={success:false, mensaje:'Respuesta no JSON ('+r.status+')'};
       }
       return {ok:r.ok, status:r.status, d:d, txt:txt};
     });
   }).then(function(w){
-    if(w.ok && w.d && w.d.success) repWAConfig = w.d;
+    if(w.ok && w.d && w.d.success) repCorreoConfig = w.d;
     if(cb) cb(w.d);
   }).catch(function(){ if(cb) cb(null); });
 }
-function repBuildWAReportOptions(selectedValue){
-  var html = '';
-  var groups = {ticket:'— Ticket', folio:'— Folio', auditoria:'— Auditoría', contable:'— Contable'};
-  Object.keys(REP_CATALOG).forEach(function(cat){
-    var label = groups[cat]||cat;
-    html += '<optgroup label="'+escH(label)+'">';
-    (REP_CATALOG[cat]||[]).forEach(function(o){
-      var val = cat+':'+o.id;
-      var sel = (val===selectedValue) ? ' selected' : '';
-      html += '<option value="'+escH(val)+'"'+sel+'>'+escH(o.titulo)+' ('+escH(cat)+')</option>';
-    });
-    html += '</optgroup>';
-  });
-  return html;
+// Grupos = las 4 pestañas de la pantalla de reportes
+var REP_GRUPOS = {
+  ticket:    { etiqueta:'Listados de Ventas Formato Ticket', icono:'bi-receipt' },
+  folio:     { etiqueta:'Listados de Ventas Formato Folio', icono:'bi-file-text' },
+  auditoria: { etiqueta:'Gestión, Control y Auditoría', icono:'bi-shield-check' },
+  contable:  { etiqueta:'Gestión Contable y Financiera', icono:'bi-calculator' }
+};
+function repCorreoFecha(iso){ if(!iso) return ''; var p=String(iso).split('-'); return p.length===3 ? (p[2]+'/'+p[1]+'/'+p[0]) : String(iso); }
+function repCorreoRango(){
+  var i = repFiltros.fecha_inicio ? repCorreoFecha(repFiltros.fecha_inicio) : '';
+  var f = repFiltros.fecha_fin ? repCorreoFecha(repFiltros.fecha_fin) : '';
+  if(i && f) return i+' al '+f;
+  if(i) return 'desde el '+i;
+  if(f) return 'hasta el '+f;
+  return 'últimos 30 días';
 }
-function repGetWAInfoFromVal(val){
-  if(!val || val.indexOf(':')===-1) return null;
-  var parts = val.split(':');
-  var cat = parts[0], id = parts.slice(1).join(':');
-  var arr = REP_CATALOG[cat]||[];
-  var found = arr.find(function(x){return x.id===id;});
-  return {cat:cat, id:id, titulo: found?found.titulo:id, desc: found?found.desc:''};
+function repCorreoNegocio(){
+  try{ if(typeof cfgPanel!=='undefined' && cfgPanel && cfgPanel.general && cfgPanel.general.nombre_local) return cfgPanel.general.nombre_local; }catch(e){}
+  return 'ClubMaster';
 }
-function repWAOnReporteChange(){
-  var sel = document.getElementById('repWAReporte');
-  var val = sel? sel.value : '';
-  var info = repGetWAInfoFromVal(val);
-  var titleEl = document.getElementById('repWAReporteTitulo');
-  var subEl = document.getElementById('repWAReporteSub');
-  var msgEl = document.getElementById('repWAMsg');
-  if(info){
-    if(titleEl) titleEl.textContent = info.titulo;
-    if(subEl) subEl.textContent = info.cat.toUpperCase()+' / '+info.id;
-    // actualizar mensaje por defecto si el usuario no ha escrito uno custom
-    if(msgEl && !msgEl.dataset.userEdited){
-      var filtrosRango = (repFiltros.fecha_inicio||repFiltros.fecha_fin) ? (repFiltros.fecha_inicio||'...')+' al '+(repFiltros.fecha_fin||'...') : 'turno actual';
-      msgEl.placeholder = 'Hola, adjuntamos el reporte de '+info.titulo+' correspondiente al turno del '+filtrosRango;
-    }
-  }
+function repCorreoAsuntoDefecto(n){
+  var s = repCorreoNegocio()+' — Reportes del '+repCorreoRango();
+  if(n>1) s += ' ('+n+' reportes)';
+  return s.slice(0,180);
 }
-function repAbrirWhatsAppModal(){
-  // determinar valor preseleccionado: contexto previo, tab activo o primer contable relevante
-  var preselected = '';
-  if(repCurrentCat && repCurrentId) preselected = repCurrentCat+':'+repCurrentId;
-  else {
-    var tab = repTab || 'contable';
+function repCorreoMensajeDefecto(n){
+  var r = repCorreoRango();
+  var extra = repFiltros.id_jornada ? ' (Jornada #'+repFiltros.id_jornada+')' : '';
+  return (n>1)
+    ? 'Hola, adjuntamos los reportes correspondientes al periodo del '+r+extra+'.'
+    : 'Hola, adjuntamos el reporte correspondiente al periodo del '+r+extra+'.';
+}
+function repCorreoPreseleccion(){
+  var pre = [];
+  if(repCurrentCat && repCurrentId && REP_CATALOG[repCurrentCat] && REP_CATALOG[repCurrentCat].some(function(x){ return x.id===repCurrentId; })){
+    pre.push(repCurrentCat+':'+repCurrentId);
+  } else {
+    var tab = repTab || 'ticket';
     var arr = REP_CATALOG[tab]||[];
-    if(arr.length) preselected = tab+':'+arr[0].id;
-    else {
-      // fallback: buscar cont_gastos / cont_stock etc
-      var fallback = 'contable:cont_gastos';
-      preselected = fallback;
-    }
+    if(arr.length) pre.push(tab+':'+arr[0].id);
   }
+  return pre;
+}
+function repCorreoChecklistHtml(pre){
+  var h = '';
+  Object.keys(REP_GRUPOS).forEach(function(cat){
+    var g = REP_GRUPOS[cat];
+    var arr = REP_CATALOG[cat]||[];
+    h += '<div class="rep-mail-grupo" data-grupo="'+cat+'">'
+      + '<div class="rep-mail-gh"><span class="rep-mail-gh-t"><i class="bi '+g.icono+'"></i> '+escH(g.etiqueta)+'</span>'
+      + '<label class="rep-mail-all"><input type="checkbox" data-grupo-check="'+cat+'" onchange="repCorreoToggleGrupo(\''+cat+'\')"> Seleccionar todos</label></div>'
+      + '<div class="rep-mail-lista">';
+    arr.forEach(function(o){
+      var val = cat+':'+o.id;
+      var marcado = pre.indexOf(val)!==-1;
+      h += '<label class="rep-mail-item'+(marcado?' rep-mail-on':'')+'" title="'+escH(o.desc||o.titulo)+'">'
+        + '<input type="checkbox" class="repCorreoRep" value="'+escH(val)+'" data-cat="'+cat+'"'+(marcado?' checked':'')
+        + ' onchange="repCorreoOnChange()"><span>'+escH(o.titulo)+'</span></label>';
+    });
+    h += '</div></div>';
+  });
+  return h;
+}
+function repCorreoOnChange(){
+  var total = 0;
+  Object.keys(REP_GRUPOS).forEach(function(cat){
+    var cajas = document.querySelectorAll('.repCorreoRep[data-cat="'+cat+'"]');
+    var marcadas = 0;
+    cajas.forEach(function(c){ if(c.checked){ marcadas++; c.parentNode.classList.add('rep-mail-on'); } else { c.parentNode.classList.remove('rep-mail-on'); } });
+    var master = document.querySelector('input[data-grupo-check="'+cat+'"]');
+    if(master){ master.checked = (cajas.length>0 && marcadas===cajas.length); master.indeterminate = (marcadas>0 && marcadas<cajas.length); }
+    total += marcadas;
+  });
+  var cont = document.getElementById('repCorreoContador');
+  if(cont) cont.textContent = (total===0) ? 'Ningún reporte seleccionado' : (total + (total===1 ? ' reporte seleccionado' : ' reportes seleccionados'));
+  var totalCajas = document.querySelectorAll('.repCorreoRep').length;
+  var totalMarcadas = document.querySelectorAll('.repCorreoRep:checked').length;
+  var all = document.getElementById('repCorreoAll');
+  if(all){ all.checked = (totalCajas>0 && totalMarcadas===totalCajas); all.indeterminate = (totalMarcadas>0 && totalMarcadas<totalCajas); }
+  var sub = document.getElementById('repCorreoSub');
+  if(sub) sub.textContent = (total===0) ? 'Seleccione uno o varios reportes' : (total + (total===1?' reporte':' reportes')+' seleccionado'+(total===1?'':'s'));
+  var asuntoEl = document.getElementById('repCorreoAsunto');
+  if(asuntoEl && !asuntoEl.dataset.userEdited) asuntoEl.value = repCorreoAsuntoDefecto(total);
+  var msgEl = document.getElementById('repCorreoMsg');
+  if(msgEl && !msgEl.dataset.userEdited) msgEl.value = repCorreoMensajeDefecto(total);
+  var btn = document.getElementById('repCorreoBtnEnviar');
+  if(btn && !repCorreoLoading){ btn.disabled = (total===0); btn.style.opacity = (total===0)? '.55' : '1'; }
+}
+function repCorreoToggleGrupo(cat){
+  var master = document.querySelector('input[data-grupo-check="'+cat+'"]');
+  if(!master) return;
+  document.querySelectorAll('.repCorreoRep[data-cat="'+cat+'"]').forEach(function(c){ c.checked = master.checked; });
+  repCorreoOnChange();
+}
+function repCorreoToggleAll(){
+  var all = document.getElementById('repCorreoAll');
+  if(!all) return;
+  document.querySelectorAll('.repCorreoRep').forEach(function(c){ c.checked = all.checked; });
+  repCorreoOnChange();
+}
+function repAbrirCorreoModal(){
+  var pre = repCorreoPreseleccion();
+  var nPre = pre.length;
   var filtrosTxt = [];
   if(repFiltros.fecha_inicio) filtrosTxt.push('Desde '+repFiltros.fecha_inicio);
   if(repFiltros.fecha_fin) filtrosTxt.push('Hasta '+repFiltros.fecha_fin);
   if(repFiltros.id_jornada) filtrosTxt.push('Jornada #'+repFiltros.id_jornada);
   if(repFiltros.id_mesero) filtrosTxt.push('Empleado #'+repFiltros.id_mesero);
+  if(repFiltros.id_cajero) filtrosTxt.push('Cajero #'+repFiltros.id_cajero);
   if(!filtrosTxt.length) filtrosTxt.push('Sin filtros (últimos 30 días)');
-  var adminPhoneTxt = (repWAConfig && repWAConfig.adminPhone) ? repWAConfig.adminPhone : '(no configurado)';
-  var optionsHtml = repBuildWAReportOptions(preselected);
-  var infoInit = repGetWAInfoFromVal(preselected);
-  var tituloInit = infoInit? infoInit.titulo : 'Seleccionar reporte';
-  var subInit = infoInit? (infoInit.cat.toUpperCase()+' / '+infoInit.id) : '';
-  var html = '<div class="rep-mhead" style="background:#128C7E"><div class="rep-mhead-main"><span class="rep-mhead-icon" style="background:rgba(255,255,255,.18)"><i class="bi bi-whatsapp"></i></span><div style="min-width:0"><div class="rep-mhead-title">Enviar por WhatsApp</div><div id="repWAReporteSub" class="rep-mhead-sub">'+escH(subInit)+'</div></div></div><button class="rep-mclose" aria-label="Cerrar" onclick="repCerrarWAModal()" style="background:rgba(255,255,255,.18)"><i class="bi bi-x-lg"></i></button></div>'
+  var adminEmailTxt = (repCorreoConfig && repCorreoConfig.adminEmail) ? repCorreoConfig.adminEmail : '(no configurado)';
+  var html = '<div class="rep-mhead" style="background:#1d4ed8"><div class="rep-mhead-main"><span class="rep-mhead-icon" style="background:rgba(255,255,255,.18)"><i class="bi bi-envelope"></i></span><div style="min-width:0"><div class="rep-mhead-title">Enviar por correo</div><div id="repCorreoSub" class="rep-mhead-sub">'+(nPre? (nPre+(nPre===1?' reporte seleccionado':' reportes seleccionados')) : 'Seleccione uno o varios reportes')+'</div></div></div><button class="rep-mclose" aria-label="Cerrar" onclick="repCerrarCorreoModal()" style="background:rgba(255,255,255,.18)"><i class="bi bi-x-lg"></i></button></div>'
     +'<div class="rep-mbody">'
-    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.78rem;color:#065f46"><i class="bi bi-info-circle me-1"></i>Se generará dinámicamente el documento (<b>PDF</b> o <b>Excel</b>) con el desglose del turno/jornada y se enviará como adjunto al número indicado.</div>'
-    +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:12px"><div style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase;margin-bottom:4px">Filtros activos</div><div style="font-size:.75rem;color:#64748b">'+escH(filtrosTxt.join(' • '))+'</div><div id="repWAReporteTitulo" style="font-weight:700;color:#0f172a;margin-top:6px">'+escH(tituloInit)+'</div></div>'
+    +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.78rem;color:#1e40af"><i class="bi bi-info-circle me-1"></i>Se generarán dinámicamente los documentos (<b>PDF</b> o <b>Excel</b>) de los reportes marcados y se enviarán como <b>adjuntos</b> en un solo correo (o en varios si superan ~20 MB).</div>'
+    +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:12px"><div style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase;margin-bottom:4px">Filtros activos</div><div style="font-size:.75rem;color:#64748b">'+escH(filtrosTxt.join(' • '))+'</div></div>'
     +'<div style="display:grid;grid-template-columns:1fr;gap:10px">'
-    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">TIPO DE REPORTE *</label><select id="repWAReporte" class="form-select" style="border-radius:10px;min-height:44px" onchange="repWAOnReporteChange()">'+optionsHtml+'</select><div style="font-size:.68rem;color:#64748b;margin-top:4px">Seleccione qué reporte generar y enviar. Ej: <b>Gastos Operativos</b>, <b>Resumen Facturas</b>, <b>Valoración Stock</b>, <b>Ventas x Empleado</b>.</div></div>'
-    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">Número destino *</label><input id="repWATel" type="tel" class="form-control" placeholder="+57 300 123 4567" style="border-radius:10px;min-height:44px"><div style="font-size:.7rem;color:#64748b;margin-top:4px">Formato E.164 con código país. Admin preconfigurado: <b>'+escH(adminPhoneTxt)+'</b> <a href="#" onclick="repWAUsarAdmin();return false;" style="color:#128C7E;font-weight:700">Usar admin</a></div></div>'
-    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">Formato de envío *</label><div style="display:flex;gap:8px"><label style="flex:1;display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;cursor:pointer;background:#fff"><input type="radio" name="repWAFormato" value="pdf" checked><span style="font-weight:700"><i class="bi bi-file-earmark-pdf me-1" style="color:#dc2626"></i>PDF</span><span style="font-size:.68rem;color:#64748b">pdfkit</span></label><label style="flex:1;display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;cursor:pointer;background:#fff"><input type="radio" name="repWAFormato" value="excel"><span style="font-weight:700"><i class="bi bi-file-earmark-spreadsheet me-1" style="color:#059669"></i>Excel</span><span style="font-size:.68rem;color:#64748b">exceljs</span></label></div></div>'
-    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">Mensaje (opcional)</label><textarea id="repWAMsg" class="form-control" rows="2" style="border-radius:10px;font-size:.82rem" placeholder="Hola, adjuntamos el reporte de ventas correspondiente al turno del [Fecha/Hora]"></textarea><div style="font-size:.68rem;color:#94a3b8;margin-top:4px">Si lo deja vacío se usará el saludo por defecto con fecha/hora.</div></div>'
+    +'<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase;margin:0">Tipo de reporte * (selección múltiple)</label><span id="repCorreoContador" style="font-size:.7rem;font-weight:800;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;padding:3px 10px;white-space:nowrap">'+(nPre? (nPre+(nPre===1?' reporte seleccionado':' reportes seleccionados')) : 'Ningún reporte seleccionado')+'</span></div>'
+      +'<label style="display:flex;align-items:center;gap:7px;font-size:.76rem;font-weight:700;color:#334155;border:1px solid #e2e8f0;background:#f8fafc;border-radius:8px;padding:8px 10px;cursor:pointer;min-height:40px"><input type="checkbox" id="repCorreoAll" onchange="repCorreoToggleAll()"> Todos los reportes</label>'
+      +'<div id="repCorreoLista" style="max-height:240px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;padding:8px;margin-top:6px;background:#fff">'+repCorreoChecklistHtml(pre)+'</div>'
+      +'<div style="font-size:.68rem;color:#64748b;margin-top:4px">Marque uno, varios o todos. Puede enviarse cualquier combinación en un mismo envío.</div></div>'
+    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">Correo destino *</label><input id="repCorreoEmail" type="text" class="form-control" inputmode="email" autocomplete="email" placeholder="gerencia@midominio.com, otro@midominio.com" style="border-radius:10px;min-height:44px"><div style="font-size:.7rem;color:#64748b;margin-top:4px">Uno o varios correos separados por coma o punto y coma (máx. 5). Admin preconfigurado: <b id="repCorreoAdminTxt">'+escH(adminEmailTxt)+'</b> <a href="#" onclick="repCorreoUsarAdmin();return false;" style="color:#1d4ed8;font-weight:700">Usar admin</a></div></div>'
+    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">Asunto (opcional)</label><input id="repCorreoAsunto" type="text" class="form-control" maxlength="180" style="border-radius:10px;min-height:44px" value="'+escH(repCorreoAsuntoDefecto(nPre))+'"><div style="font-size:.68rem;color:#94a3b8;margin-top:4px">Si lo deja vacío se usará el asunto por defecto con el nombre del negocio y las fechas.</div></div>'
+    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">Formato de envío *</label><div style="display:flex;gap:8px"><label style="flex:1;display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;cursor:pointer;background:#fff"><input type="radio" name="repFmtCorreo" value="pdf" checked><span style="font-weight:700"><i class="bi bi-file-earmark-pdf me-1" style="color:#dc2626"></i>PDF</span><span style="font-size:.68rem;color:#64748b">pdfkit</span></label><label style="flex:1;display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;cursor:pointer;background:#fff"><input type="radio" name="repFmtCorreo" value="excel"><span style="font-weight:700"><i class="bi bi-file-earmark-spreadsheet me-1" style="color:#059669"></i>Excel</span><span style="font-size:.68rem;color:#64748b">exceljs</span></label></div></div>'
+    +'<div><label style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase">Mensaje (opcional)</label><textarea id="repCorreoMsg" class="form-control" rows="3" style="border-radius:10px;font-size:.82rem">'+escH(repCorreoMensajeDefecto(nPre))+'</textarea><div style="font-size:.68rem;color:#94a3b8;margin-top:4px">Si lo deja vacío se usará el saludo por defecto con el rango de fechas.</div></div>'
     +'</div>'
-    +'<div id="repWAStatus" style="margin-top:12px"></div>'
-    +'<div class="rep-mfoot" style="margin-top:14px"><button class="btn btn-sm" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;min-height:44px" onclick="repCerrarWAModal()">Cancelar</button><button id="repWABtnEnviar" class="btn btn-sm" style="background:#25D366;color:#fff;border-radius:8px;font-weight:800;min-height:44px;flex:1" onclick="repEnviarWhatsApp()"><i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp</button></div>'
+    +'<div id="repCorreoStatus" style="margin-top:12px"></div>'
+    +'<div class="rep-mfoot" style="margin-top:14px"><button class="btn btn-sm" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;min-height:44px" onclick="repCerrarCorreoModal()">Cancelar</button><button id="repCorreoBtnEnviar" class="btn btn-sm" style="background:#2563eb;color:#fff;border-radius:8px;font-weight:800;min-height:44px;flex:1" onclick="repEnviarCorreo()"><i class="bi bi-envelope me-1"></i>Enviar por correo</button></div>'
     +'</div>';
-  repAbrirWAModal(html);
-  // listeners
-  var msgElInit = document.getElementById('repWAMsg');
-  if(msgElInit) msgElInit.addEventListener('input', function(){ this.dataset.userEdited='1'; });
-  repWAOnReporteChange();
-  if(!repWAConfig) repFetchWAConfig(function(d){
-    if(d && d.adminPhone){
-      var el=document.getElementById('repWATel');
-      if(el && !el.value) el.value = d.adminPhone;
-      var adminTxt = document.querySelector('#repWAModalBox');
-      // actualizar texto admin si aparece
-    }
+  repMontarCorreoModal(html);
+  ['repCorreoAsunto','repCorreoMsg'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('input', function(){ this.dataset.userEdited='1'; });
   });
-  else {
-    var el2=document.getElementById('repWATel');
-    if(el2 && repWAConfig.adminPhone) el2.value = repWAConfig.adminPhone;
-  }
-}
-function repWAUsarAdmin(){
-  if(repWAConfig && repWAConfig.adminPhone){
-    document.getElementById('repWATel').value = repWAConfig.adminPhone;
+  var emailEl = document.getElementById('repCorreoEmail');
+  if(emailEl) emailEl.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); repEnviarCorreo(); } });
+  repCorreoOnChange();
+  if(repCorreoConfig){
+    if(emailEl && !emailEl.value && repCorreoConfig.adminEmail) emailEl.value = repCorreoConfig.adminEmail;
   } else {
-    repFetchWAConfig(function(d){
-      if(d && d.adminPhone) document.getElementById('repWATel').value = d.adminPhone;
-      else repError('Número de administrador no configurado. Defina WHATSAPP_ADMIN_PHONE en .env');
+    repFetchCorreoConfig(function(d){
+      var el = document.getElementById('repCorreoEmail');
+      var txt = document.getElementById('repCorreoAdminTxt');
+      if(d && d.success){
+        if(txt) txt.textContent = d.adminEmail || '(no configurado)';
+        if(el && !el.value && d.adminEmail) el.value = d.adminEmail;
+      }
     });
   }
 }
-function repAbrirWAModal(html){
-  var m=document.getElementById('repWAModal');
+function repCorreoUsarAdmin(){
+  var el = document.getElementById('repCorreoEmail');
+  var aplicar = function(email){ if(el && email) el.value = email; else repError('Correo de administrador no configurado. Defina ADMIN_EMAIL en el .env del servidor.'); };
+  if(repCorreoConfig && repCorreoConfig.adminEmail) return aplicar(repCorreoConfig.adminEmail);
+  repFetchCorreoConfig(function(d){
+    if(d && d.success){ repCorreoConfig = d; aplicar(d.adminEmail); }
+    else repError('No se pudo leer la configuración de correo.');
+  });
+}
+function repMontarCorreoModal(html){
+  var m=document.getElementById('repCorreoModal');
   if(!m){
-    m=document.createElement('div'); m.id='repWAModal';
+    m=document.createElement('div'); m.id='repCorreoModal';
     m.style.cssText='position:fixed;inset:0;z-index:1060;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:12px;backdrop-filter:blur(2px)';
-    m.innerHTML='<div id="repWAModalBox" style="width:100%;max-width:560px;max-height:92vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.35)"></div>';
-    m.addEventListener('click', function(e){ if(e.target===m) repCerrarWAModal(); });
+    m.innerHTML='<div id="repCorreoModalBox" style="width:100%;max-width:600px;max-height:92vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.35)"></div>';
+    m.addEventListener('click', function(e){ if(e.target===m) repCerrarCorreoModal(); });
     document.body.appendChild(m);
-    document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ var mm=document.getElementById('repWAModal'); if(mm && mm.style.display!=='none') repCerrarWAModal(); }});
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ var mm=document.getElementById('repCorreoModal'); if(mm && mm.style.display!=='none') repCerrarCorreoModal(); }});
   }
-  document.getElementById('repWAModalBox').innerHTML = html;
+  document.getElementById('repCorreoModalBox').innerHTML = html;
   m.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
 }
-function repCerrarWAModal(){
-  var m=document.getElementById('repWAModal');
+function repCerrarCorreoModal(){
+  if(repCorreoLoading) return;
+  var m=document.getElementById('repCorreoModal');
   if(m) m.style.display='none';
   try{ document.body.style.overflow=''; }catch(e){}
 }
-function repEnviarWhatsApp(){
-  if(repWALoading) return;
-  var selEl=document.getElementById('repWAReporte');
-  var selVal= selEl? selEl.value : '';
-  if(!selVal){ repError('Seleccione TIPO DE REPORTE *'); if(selEl) selEl.focus(); return; }
-  var info = repGetWAInfoFromVal(selVal);
-  if(!info){ repError('Reporte inválido'); return; }
-  // actualizar globales para compatibilidad
-  repCurrentCat = info.cat; repCurrentId = info.id;
-  var telEl=document.getElementById('repWATel');
-  var tel=(telEl? telEl.value.trim() : '');
-  var fmtEl=document.querySelector('input[name="repWAFormato"]:checked');
-  var fmt=fmtEl? fmtEl.value : 'pdf';
-  var msgEl=document.getElementById('repWAMsg');
-  var msg=msgEl? msgEl.value.trim() : '';
-  if(!tel){ repError('Ingrese el número de destino'); if(telEl) telEl.focus(); return; }
-  var digits=tel.replace(/\D/g,'');
-  if(digits.length < 10){ repError('Número inválido. Ej: +573001234567'); return; }
-  var statusEl=document.getElementById('repWAStatus');
-  var btn=document.getElementById('repWABtnEnviar');
-  repWALoading=true;
-  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span> Generando y enviando...'; }
-  if(statusEl) statusEl.innerHTML='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;text-align:center;color:#1e40af;font-size:.8rem"><span class="spinner-border spinner-border-sm me-2"></span>Generando '+fmt.toUpperCase()+' y enviando por WhatsApp... Esto puede tardar unos segundos.</div>';
-  var filtrosPayload = { fecha_inicio: repFiltros.fecha_inicio||'', fecha_fin: repFiltros.fecha_fin||'', id_jornada: repFiltros.id_jornada||'', id_mesero: repFiltros.id_mesero||'' };
-  if(!filtrosPayload.fecha_inicio) delete filtrosPayload.fecha_inicio;
-  if(!filtrosPayload.fecha_fin) delete filtrosPayload.fecha_fin;
-  if(!filtrosPayload.id_jornada) delete filtrosPayload.id_jornada;
-  if(!filtrosPayload.id_mesero) delete filtrosPayload.id_mesero;
-  // compat payload: soporta {reporte, numero} y {cat,id, telefono}
+function repEnviarCorreo(){
+  if(repCorreoLoading) return;
+  var cajas = document.querySelectorAll('.repCorreoRep:checked');
+  if(!cajas.length){
+    repError('Seleccione al menos un reporte en "Tipo de reporte".');
+    var lista = document.getElementById('repCorreoLista');
+    if(lista && lista.scrollIntoView) lista.scrollIntoView({block:'nearest'});
+    return;
+  }
+  var reportes = Array.prototype.map.call(cajas, function(c){ return c.value; });
+  var emailEl = document.getElementById('repCorreoEmail');
+  var bruto = emailEl ? emailEl.value.trim() : '';
+  var correos = bruto.split(/[,;]/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if(!correos.length){ repError('Ingrese al menos un correo de destino'); if(emailEl) emailEl.focus(); return; }
+  if(correos.length>5){ repError('Máximo 5 correos destino por envío (ingresó '+correos.length+')'); if(emailEl) emailEl.focus(); return; }
+  var re = /^[^\s@,;<>]+@[^\s@,;<>]+\.[A-Za-z]{2,}$/;
+  for(var i=0;i<correos.length;i++){
+    var c = correos[i];
+    if(c.length>154 || c.indexOf('..')!==-1 || /[\s<>"'\\]/.test(c) || !re.test(c)){
+      repError('Correo inválido: "'+c+'". Ej: gerencia@midominio.com');
+      if(emailEl) emailEl.focus();
+      return;
+    }
+  }
+  var fmtEl = document.querySelector('input[name="repFmtCorreo"]:checked');
+  var formato = fmtEl ? fmtEl.value : 'pdf';
+  var asuntoEl = document.getElementById('repCorreoAsunto');
+  var msgEl = document.getElementById('repCorreoMsg');
+  var asunto = asuntoEl ? asuntoEl.value.trim() : '';
+  var mensaje = msgEl ? msgEl.value.trim() : '';
+  if(asunto.length>180){ repError('El asunto no puede superar 180 caracteres'); if(asuntoEl) asuntoEl.focus(); return; }
+
+  var filtrosPayload = {
+    fecha_inicio: repFiltros.fecha_inicio||'',
+    fecha_fin: repFiltros.fecha_fin||'',
+    id_jornada: repFiltros.id_jornada||'',
+    id_mesero: repFiltros.id_mesero||'',
+    id_cajero: repFiltros.id_cajero||''
+  };
+  Object.keys(filtrosPayload).forEach(function(k){ if(!filtrosPayload[k]) delete filtrosPayload[k]; });
+
   var payload = {
-    reporte: selVal,            // nuevo formato solicitado: "contable:cont_gastos"
-    cat: info.cat, id: info.id, // compat legacy
-    formato: fmt,
-    numero: tel, telefono: tel, // compat ambos nombres
-    mensaje: msg, message: msg,
+    reportes: reportes,
+    correos: correos,
+    formato: formato,
+    asunto: asunto,
+    mensaje: mensaje,
     filtros: filtrosPayload
   };
-  var url = repBuildWAUrl('/api/reportes/enviar-whatsapp');
-  fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(payload), credentials:'same-origin' })
+
+  var statusEl = document.getElementById('repCorreoStatus');
+  var btn = document.getElementById('repCorreoBtnEnviar');
+  repCorreoLoading = true;
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando y enviando...'; }
+  var cancelBtn = btn ? btn.parentNode.querySelector('button') : null;
+  if(cancelBtn) cancelBtn.disabled = true;
+  if(statusEl) statusEl.innerHTML = '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center;color:#1e40af;font-size:.8rem"><span class="spinner-border spinner-border-sm me-2"></span>Generando '+reportes.length+' reporte(s) en '+formato.toUpperCase()+' y enviando a '+correos.length+' correo(s)... Esto puede tardar unos segundos.</div>';
+
+  fetch(repBuildUrl('/api/reportes/enviar-correo'), { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(payload), credentials:'same-origin' })
     .then(function(r){
       return r.text().then(function(txt){
         var d; try{ d=JSON.parse(txt); }catch(e){
-          // HTML recibido -> error de ruta (<!DOCTYPE)
           d={success:false, mensaje:'Respuesta no JSON ('+r.status+'): '+txt.slice(0,250)};
         }
         return {ok:r.ok, status:r.status, d:d, txt:txt};
       });
     })
     .then(function(w){
-      repWALoading=false;
-      if(btn){ btn.disabled=false; btn.innerHTML='<i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp'; }
-      if(w.ok && w.d.success){
-        if(w.d.mock || w.d.provider==='mock'){
-          if(statusEl) statusEl.innerHTML='<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:12px;color:#92400e;text-align:center"><div style="font-weight:800"><i class="bi bi-exclamation-triangle-fill me-1"></i> Generado en modo MOCK</div><div style="font-size:.78rem;margin-top:4px">Reporte <b>'+escH(info.id)+'</b> ('+fmt.toUpperCase()+') generado pero <b>NO enviado a WhatsApp real</b>.</div><div style="font-size:.72rem;margin-top:6px">Provider actual: <b>mock</b>. Configure <code>WHATSAPP_PROVIDER</code> a <code>ultramsg</code>/<code>greenapi</code>/<code>twilio</code> y defina <code>WHATSAPP_ADMIN_PHONE</code> en <code>.env</code>. Verifique <code>/api/whatsapp/status</code>.</div><div style="font-size:.70rem;color:#78350f;margin-top:6px">Archivo: '+escH(w.d.archivo||'')+' • '+ (w.d.bytes? (w.d.bytes/1024).toFixed(1)+' KB' : '') +'</div></div>';
-          repError('MOCK: reporte generado pero no enviado. Configure proveedor real.');
-          // no cerrar modal automáticamente en modo mock
-        } else {
-          if(statusEl) statusEl.innerHTML='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;color:#065f46;text-align:center"><div style="font-weight:800"><i class="bi bi-check-circle-fill me-1"></i> ¡Enviado exitosamente!</div><div style="font-size:.78rem;margin-top:4px">Reporte <b>'+escH(info.id)+'</b> ('+fmt.toUpperCase()+') enviado a <b>'+escH(w.d.telefonoMasked||w.d.telefono||tel)+'</b> vía <b>'+escH(w.d.provider||'whatsapp')+'</b></div><div style="font-size:.70rem;color:#047857;margin-top:6px">Archivo: '+escH(w.d.archivo||'')+' • '+ (w.d.bytes? (w.d.bytes/1024).toFixed(1)+' KB' : '') +'</div></div>';
-          repToastSuccess('Reporte enviado por WhatsApp a '+ (w.d.telefonoMasked||w.d.telefono||tel) +' ('+fmt.toUpperCase()+')');
-          setTimeout(function(){ repCerrarWAModal(); }, 2200);
-        }
+      repCorreoLoading = false;
+      if(btn){ btn.disabled = false; btn.innerHTML = '<i class="bi bi-envelope me-1"></i>Enviar por correo'; }
+      if(cancelBtn) cancelBtn.disabled = false;
+      if(w.ok && w.d && w.d.success){
+        var adj = w.d.adjuntos || reportes.length;
+        var mb = w.d.bytes ? (w.d.bytes/1048576).toFixed(1)+' MB' : '';
+        var partes = w.d.partes>1 ? (' • '+w.d.partes+' correos por destinatario') : '';
+        if(statusEl) statusEl.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;color:#065f46;text-align:center"><div style="font-weight:800"><i class="bi bi-check-circle-fill me-1"></i> ¡Enviado exitosamente!</div><div style="font-size:.78rem;margin-top:4px">'+adj+' adjunto(s) ('+mb+') enviados a <b>'+escH(correos.join(', '))+'</b> vía <b>'+escH(w.d.proveedor||'correo')+'</b>'+partes+'</div><div style="font-size:.70rem;color:#047857;margin-top:6px">Asunto: '+escH(w.d.asunto||asunto||'—')+'</div></div>';
+        repToastSuccess('Reportes enviados por correo a '+correos.join(', '));
+        setTimeout(function(){ repCerrarCorreoModal(); }, 2500);
       } else {
         var msgErr = (w.d && (w.d.mensaje||w.d.message||w.d.error)) ? (w.d.mensaje||w.d.message||w.d.error) : ('Error '+w.status);
-        if(w.txt && w.txt.trim().startsWith('<!DOCTYPE')) msgErr = 'Error de conexión: endpoint no encontrado (404). Verifique que el backend tenga POST /api/reportes/enviar-whatsapp registrado.';
-        if(statusEl) statusEl.innerHTML='<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;color:#991b1b"><div style="font-weight:800"><i class="bi bi-x-circle-fill me-1"></i> Error al enviar</div><div style="font-size:.78rem;margin-top:4px;word-break:break-word">'+escH(msgErr)+'</div><div style="font-size:.70rem;color:#7f1d1d;margin-top:6px">Verifique número E.164 (+57...), reporte y conexión con la API de WhatsApp (WHATSAPP_PROVIDER). Revise logs del servidor.</div></div>';
+        if(w.txt && w.txt.trim().startsWith('<!DOCTYPE')) msgErr = 'Error de conexión: endpoint no encontrado (404). Verifique que el backend tenga POST /api/reportes/enviar-correo registrado.';
+        var detalle = '';
+        if(w.d && Array.isArray(w.d.resultados)){
+          detalle = '<div style="font-size:.70rem;color:#7f1d1d;margin-top:6px;text-align:left">'+w.d.resultados.map(function(r){ return (r.ok?'✓ ':'✗ ')+escH(r.correo)+(r.error? ' — '+escH(r.error):''); }).join('<br>')+'</div>';
+        }
+        if(statusEl) statusEl.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;color:#991b1b"><div style="font-weight:800"><i class="bi bi-x-circle-fill me-1"></i> No se pudo enviar</div><div style="font-size:.78rem;margin-top:4px;word-break:break-word">'+escH(msgErr)+'</div>'+detalle+'<div style="font-size:.70rem;color:#7f1d1d;margin-top:6px">Verifique los correos destino y que el proveedor de correo esté configurado en el servidor (RESEND_API_KEY / BREVO_API_KEY / SMTP_*). Revise los logs del backend.</div></div>';
         repError(msgErr);
       }
     })
     .catch(function(e){
-      repWALoading=false;
-      if(btn){ btn.disabled=false; btn.innerHTML='<i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp'; }
-      if(statusEl) statusEl.innerHTML='<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;color:#991b1b"><div style="font-weight:800">Error de conexión</div><div style="font-size:.78rem">'+escH(e.message||'No se pudo conectar con la API de WhatsApp')+'</div></div>';
-      repError('Error de conexión con el servidor de WhatsApp: '+(e.message||'')); 
+      repCorreoLoading = false;
+      if(btn){ btn.disabled = false; btn.innerHTML = '<i class="bi bi-envelope me-1"></i>Enviar por correo'; }
+      if(cancelBtn) cancelBtn.disabled = false;
+      if(statusEl) statusEl.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;color:#991b1b"><div style="font-weight:800">Error de conexión</div><div style="font-size:.78rem">'+escH(e.message||'No se pudo conectar con el servidor')+'</div></div>';
+      repError('Error de conexión con el servidor: '+(e.message||''));
     });
 }
-// precargar config al iniciar reportes
-try{ repFetchWAConfig(); }catch(e){}
+// precargar configuración de correo al iniciar reportes
+try{ repFetchCorreoConfig(); }catch(e){}

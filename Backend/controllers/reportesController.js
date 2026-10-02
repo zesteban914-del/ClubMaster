@@ -1,11 +1,14 @@
 // =========================================================
-// reportesController.js - Controlador para envío por WhatsApp
-// Implementa: router.post('/reportes/enviar-whatsapp', reportesController.enviarWhatsApp)
-// Montado bajo /api => POST /api/reportes/enviar-whatsapp
+// reportesController.js - Controlador de reportes
+//   POST /api/reportes/enviar-correo   -> enviarCorreo  (ACTIVO)
+//   POST /api/reportes/enviar-whatsapp -> enviarWhatsApp (DESACTIVADO,
+//         la ruta ya no se registra en routes/reportes.js)
+// Montado bajo /api
 // =========================================================
 const fs = require('fs');
 const path = require('path');
 const whatsappService = require('../services/whatsapp-service');
+const emailService = require('../services/email-service');
 const reportGen = require('../utils/report-generator');
 const db = require('../database');
 
@@ -18,6 +21,7 @@ function parseFiltros(q){
     if(f.fecha_inicio && f.fecha_fin){ var dias=(new Date(f.fecha_fin)-new Date(f.fecha_inicio))/86400000; if(dias>366) return {error:'Rango máximo permitido: 366 días, refine los filtros'}; }
     if(q.id_jornada!==undefined && q.id_jornada!=='' && q.id_jornada!==null){ if(!/^\d+$/.test(String(q.id_jornada))||parseInt(q.id_jornada,10)<=0) return {error:'id_jornada debe ser entero positivo sin decimales'}; f.id_jornada=parseInt(q.id_jornada,10); }
     if(q.id_mesero!==undefined && q.id_mesero!=='' && q.id_mesero!==null){ if(!/^\d+$/.test(String(q.id_mesero))||parseInt(q.id_mesero,10)<=0) return {error:'id_mesero debe ser entero positivo sin decimales'}; f.id_mesero=parseInt(q.id_mesero,10); }
+    if(q.id_cajero!==undefined && q.id_cajero!=='' && q.id_cajero!==null){ if(!/^\d+$/.test(String(q.id_cajero))||parseInt(q.id_cajero,10)<=0) return {error:'id_cajero debe ser entero positivo sin decimales'}; f.id_cajero=parseInt(q.id_cajero,10); }
     if(!f.fecha_inicio && !f.fecha_fin){ var hoy=new Date(); var ini=new Date(); ini.setDate(hoy.getDate()-30); f.fecha_inicio=ini.toISOString().split('T')[0]; f.fecha_fin=hoy.toISOString().split('T')[0]; f._defecto=true; }
     return {filtros:f};
 }
@@ -335,4 +339,249 @@ async function enviarWhatsApp(req, res){
     }
 }
 
-module.exports = { enviarWhatsApp, resolverTipoReporte, parseFiltros, cargarDatosReporte };
+// =========================================================
+// ENVIO DE REPORTES POR CORREO  (reemplaza al de WhatsApp)
+// =========================================================
+let _nombreNegocioCache = null;
+async function nombreNegocio(){
+    if(_nombreNegocioCache) return _nombreNegocioCache;
+    let nombre = '';
+    try{
+        const [rows] = await db.pool.query("SELECT valor FROM configuracion_general WHERE clave='nombre_local' LIMIT 1");
+        if(rows.length && rows[0].valor) nombre = String(rows[0].valor).trim();
+    }catch(e){ nombre = ''; }
+    if(!nombre) nombre = String(process.env.NOMBRE_NEGOCIO || '').trim() || 'ClubMaster';
+    _nombreNegocioCache = nombre;
+    return nombre;
+}
+
+function fechaLegible(iso){
+    if(!iso) return '';
+    const p = String(iso).split('-');
+    if(p.length!==3) return String(iso);
+    return p[2]+'/'+p[1]+'/'+p[0];
+}
+
+function rangoLegible(filtros){
+    const ini = fechaLegible(filtros.fecha_inicio);
+    const fin = fechaLegible(filtros.fecha_fin);
+    if(ini && fin) return ini+' al '+fin;
+    if(ini) return 'desde el '+ini;
+    if(fin) return 'hasta el '+fin;
+    return 'últimos 30 días';
+}
+
+async function asuntoPorDefecto(filtros, total){
+    const negocio = await nombreNegocio();
+    const sufijo = total>1 ? ' ('+total+' reportes)' : '';
+    return (negocio+' — Reportes del '+rangoLegible(filtros)+sufijo).slice(0,180);
+}
+
+function mensajePorDefecto(filtros, total){
+    const rango = rangoLegible(filtros);
+    const extra = filtros.id_jornada ? ' (Jornada #'+filtros.id_jornada+')' : '';
+    if(total>1) return 'Hola, adjuntamos los reportes correspondientes al periodo del '+rango+extra+'.';
+    return 'Hola, adjuntamos el reporte correspondiente al periodo del '+rango+extra+'.';
+}
+
+/**
+ * GET /api/reportes/config-correo
+ * Devuelve el correo a prellenar en el modal (sesion -> ADMIN_EMAIL)
+ * y si el proveedor de correo esta configurado. Nunca expone claves.
+ */
+async function configCorreo(req, res){
+    try{
+        const u = (req.session && req.session.usuario) || {};
+        const deSesion = u.correo ? String(u.correo).trim() : '';
+        const deEnv = String(process.env.ADMIN_EMAIL || '').trim();
+        const st = emailService.estado();
+        return res.json({
+            success: true,
+            adminEmail: (deSesion || deEnv || ''),
+            configured: !!st.configurado,
+            proveedor: st.proveedor || '',
+            detalle: st.configurado ? '' : st.detalle
+        });
+    }catch(e){
+        console.error('configCorreo:', e.message);
+        return res.status(500).json({ success:false, mensaje:'No se pudo leer la configuración de correo' });
+    }
+}
+
+/**
+ * POST /api/reportes/enviar-correo
+ * Body: { reportes[], correos[], formato, asunto, mensaje, filtros{} }
+ * Genera cada reporte con el mismo motor (pdfkit/exceljs) y los envia
+ * como adjuntos en uno o varios correos (particion ~20 MB).
+ */
+async function enviarCorreo(req, res){
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    try{
+        const body = req.body || {};
+
+        // 1. Proveedor de correo
+        const st = emailService.estado();
+        if(!st.configurado){
+            return res.status(503).json({
+                success: false,
+                codigo: 'correo_no_configurado',
+                mensaje: 'El envío por correo no está configurado. '+st.detalle+'. Configure las variables de entorno de correo (RESEND_API_KEY/RESEND_FROM, BREVO_API_KEY/BREVO_FROM o SMTP_HOST/SMTP_USER/SMTP_PASS) en el servidor.'
+            });
+        }
+
+        // 2. Reportes (seleccion multiple)
+        let reportes = body.reportes || body.reportes_ids || body.reports || [];
+        if(!Array.isArray(reportes)) reportes = [reportes];
+        reportes = reportes.map(function(r){ return String(r==null?'':r).trim(); }).filter(Boolean);
+        if(!reportes.length){
+            return res.status(400).json({ success:false, mensaje:'Debe seleccionar al menos un reporte para enviar.' });
+        }
+        if(reportes.length > 30){
+            return res.status(400).json({ success:false, mensaje:'Máximo 30 reportes por envío (recibió '+reportes.length+').' });
+        }
+        const resueltos = [];
+        const vistos = {};
+        const CATEGORIAS_VALIDAS = ['ticket', 'folio', 'auditoria', 'contable'];
+        for(const r of reportes){
+            const resolved = resolverTipoReporte(r);
+            if(!resolved || !resolved.cat || !resolved.id){
+                return res.status(400).json({ success:false, mensaje:'Reporte inválido: "'+r+'".' });
+            }
+            const cat = resolved.cat.toLowerCase().trim();
+            const id = resolved.id.trim();
+            if(CATEGORIAS_VALIDAS.indexOf(cat) === -1 || !/^[a-z0-9_]+$/.test(id)){
+                return res.status(400).json({ success:false, mensaje:'Reporte inválido: "'+r+'".' });
+            }
+            const clave = cat+':'+id;
+            if(vistos[clave]) continue;
+            vistos[clave] = true;
+            resueltos.push({ cat: cat, id: id });
+        }
+
+        // 3. Correos destino (validados en el servidor)
+        const entradaCorreos = body.correos !== undefined ? body.correos : (body.correo || body.destino || body.para || '');
+        const norm = emailService.normalizarCorreos(entradaCorreos);
+        if(!norm.ok){
+            return res.status(400).json({ success:false, mensaje: norm.error });
+        }
+        const correos = norm.correos;
+
+        // 4. Formato
+        let formato = String(body.formato || body.format || 'pdf').toLowerCase().trim();
+        if(formato === 'xlsx') formato = 'excel';
+        if(['pdf','excel'].indexOf(formato) === -1){
+            return res.status(400).json({ success:false, mensaje:'Formato inválido. Use pdf o excel.' });
+        }
+
+        // 5. Filtros
+        let filtrosInput = {};
+        const f = body.filtros && typeof body.filtros === 'object' ? body.filtros : {};
+        const leer = function(a, b){
+            for(const k of [a,b]){ if(f[k]!==undefined && f[k]!==null && String(f[k])!=='') return f[k]; }
+            return undefined;
+        };
+        const fi = leer('fecha_inicio','fechaInicio') || body.fecha_inicio || body.fechaInicio || req.query.fecha_inicio;
+        const ff = leer('fecha_fin','fechaFin') || body.fecha_fin || body.fechaFin || req.query.fecha_fin;
+        const jj = leer('id_jornada','jornada') || body.id_jornada || req.query.id_jornada;
+        const mm = leer('id_mesero','mesero') || body.id_mesero || req.query.id_mesero;
+        const cc = leer('id_cajero','cajero') || body.id_cajero || req.query.id_cajero;
+        if(fi) filtrosInput.fecha_inicio = String(fi).trim();
+        if(ff) filtrosInput.fecha_fin = String(ff).trim();
+        if(jj!==undefined && jj!=='' && jj!==null) filtrosInput.id_jornada = jj;
+        if(mm!==undefined && mm!=='' && mm!==null) filtrosInput.id_mesero = mm;
+        if(cc!==undefined && cc!=='' && cc!==null) filtrosInput.id_cajero = cc;
+        const parsed = parseFiltros(filtrosInput);
+        if(parsed.error){
+            return res.status(400).json({ success:false, mensaje: parsed.error });
+        }
+        const filtros = parsed.filtros;
+
+        // 6. Asunto y mensaje (saneados: sin CR/LF ni HTML sin escapar)
+        let asunto = emailService.sanearAsunto(body.asunto || body.subject || '');
+        if(!asunto) asunto = await asuntoPorDefecto(filtros, resueltos.length);
+        let mensaje = emailService.sanearTexto(body.mensaje || body.message || body.texto || '');
+        if(!mensaje) mensaje = mensajePorDefecto(filtros, resueltos.length);
+
+        // 7. Generar adjuntos con el MISMO motor de siempre
+        const adjuntos = [];
+        for(const rep of resueltos){
+            let data;
+            try{
+                data = await cargarDatosReporte(rep.cat, rep.id, filtros);
+            }catch(eDatos){
+                console.error('enviarCorreo cargarDatos:', eDatos.message);
+                return res.status(500).json({ success:false, mensaje:'Error al obtener datos del reporte "'+rep.id+'": '+eDatos.message });
+            }
+            const reportData = { filtros, cat: rep.cat, id: rep.id, data };
+            let file;
+            try{
+                file = (formato === 'pdf')
+                    ? await reportGen.generarPDF({ cat: rep.cat, id: rep.id, filtros, reportData })
+                    : await reportGen.generarExcel({ cat: rep.cat, id: rep.id, filtros, reportData });
+            }catch(eGen){
+                console.error('enviarCorreo generar:', eGen.message);
+                return res.status(500).json({ success:false, mensaje:'Error al generar el archivo del reporte "'+rep.id+'": '+eGen.message });
+            }
+            if(!file || !file.buffer || !file.buffer.length){
+                return res.status(500).json({ success:false, mensaje:'El reporte "'+rep.id+'" no produjo archivo (0 bytes).' });
+            }
+            adjuntos.push({
+                nombre: emailService.nombreArchivoSeguro(file.fileName),
+                buffer: file.buffer,
+                mimeType: file.mimeType,
+                titulo: reportGen.getTituloReporte(rep.cat, rep.id)
+            });
+        }
+
+        // 8. Envio (particion automatica si supera ~20 MB)
+        let envio;
+        try{
+            envio = await emailService.enviarReportes({ correos: correos, asunto: asunto, texto: mensaje, adjuntos: adjuntos });
+        }catch(eEnvio){
+            if(eEnvio.noConfigurado){
+                return res.status(503).json({ success:false, codigo:'correo_no_configurado', mensaje: eEnvio.message });
+            }
+            console.error('enviarCorreo envio:', eEnvio.message);
+            return res.status(502).json({ success:false, mensaje:'No se pudo enviar el correo: '+eEnvio.message });
+        }
+
+        const okTotal = envio.resultados.filter(function(r){ return r.ok; }).length;
+        const fallidos = envio.resultados.filter(function(r){ return !r.ok; });
+        const mb = (envio.bytes/1048576).toFixed(1);
+        const base = adjuntos.length+' adjunto(s), '+mb+' MB'+(envio.partes>1 ? ', '+envio.partes+' correos por destinatario' : '');
+
+        if(fallidos.length === 0){
+            return res.status(200).json({
+                success: true,
+                mensaje: 'Correo enviado con éxito a '+okTotal+' destinatario(s) ('+base+').',
+                proveedor: envio.proveedor,
+                partes: envio.partes,
+                adjuntos: adjuntos.length,
+                bytes: envio.bytes,
+                formato: formato,
+                asunto: asunto,
+                resultados: envio.resultados
+            });
+        }
+
+        const detalle = fallidos.map(function(r){ return r.correo+' — '+(r.error||'error desconocido'); }).join(' | ');
+        if(okTotal === 0){
+            return res.status(502).json({ success:false, mensaje:'No se pudo enviar el correo. '+detalle, resultados: envio.resultados, proveedor: envio.proveedor });
+        }
+        return res.status(200).json({
+            success: false,
+            mensaje: 'Envío parcial: '+okTotal+' de '+envio.resultados.length+' correos entregados ('+base+'). Fallaron: '+detalle,
+            resultados: envio.resultados,
+            proveedor: envio.proveedor,
+            partes: envio.partes,
+            adjuntos: adjuntos.length
+        });
+
+    }catch(e){
+        console.error('enviarCorreo error no controlado:', e);
+        return res.status(500).json({ success:false, mensaje:'Error al procesar el envío: '+e.message });
+    }
+}
+
+module.exports = { enviarWhatsApp, enviarCorreo, configCorreo, resolverTipoReporte, parseFiltros, cargarDatosReporte };
+

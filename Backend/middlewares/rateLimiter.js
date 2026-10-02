@@ -57,5 +57,6 @@ const recuperarLimiter = createLimiter('RATE_RECUPERAR_MAX', 20, 'Demasiadas sol
 const pinLimiter = createLimiter('RATE_PIN_MAX', 30, 'Demasiados intentos de PIN. Bloqueado 15 minutos.');
 const cobrarLimiter = createLimiter('RATE_COBRAR_MAX', 200, 'Demasiados cobros seguidos. Espera un momento y reintenta.', true);
 const backupLimiter = createLimiter('RATE_BACKUP_MAX', 20, 'Demasiadas descargas de backup. Intenta en 15 minutos.', true);
+const correoReportesLimiter = createLimiter('RATE_CORREO_MAX', 8, 'Demasiados envíos de reportes por correo. Intenta en 15 minutos.');
 
-module.exports = { loginLimiter, recuperarLimiter, pinLimiter, cobrarLimiter, backupLimiter, esIpLocal, obtenerIp };
+module.exports = { loginLimiter, recuperarLimiter, pinLimiter, cobrarLimiter, backupLimiter, correoReportesLimiter, esIpLocal, obtenerIp };
