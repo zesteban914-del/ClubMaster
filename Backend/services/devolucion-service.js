@@ -316,7 +316,7 @@ async function crearDevolucion(idProveedor, idUsuario, motivoGeneral, notas, det
         }
         totalDevuelto = redondear(totalDevuelto);
 
-        await connection.query(
+        const [insDevolucion] = await connection.query(
             `INSERT INTO devoluciones
                (numero_devolucion, id_proveedor, id_usuario, fecha, motivo_general, notas,
                 estado, total_devuelto, stock_descontado, id_jornada)
@@ -324,7 +324,7 @@ async function crearDevolucion(idProveedor, idUsuario, motivoGeneral, notas, det
             [numero, idProveedor, idUsuario || null, (motivoGeneral || '').trim() || '', notas || null,
              estado, totalDevuelto, datos.id_jornada || null]
         );
-        const idDevolucion = connection.lastInsertId;
+        const idDevolucion = insDevolucion.insertId;
 
         for (const linea of lineas) {
             await connection.query(
