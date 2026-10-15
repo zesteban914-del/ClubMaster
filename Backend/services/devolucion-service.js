@@ -73,6 +73,27 @@ async function ensureTables() {
     `);
     try { await pool.query('ALTER TABLE kardex MODIFY COLUMN tipo_movimiento VARCHAR(80) NOT NULL'); } catch (e) {}
     try { await pool.query('ALTER TABLE kardex MODIFY COLUMN referencia VARCHAR(150) NULL'); } catch (e) {}
+    // Reparación idempotente: instalaciones antiguas pueden tener las PK
+    // sin AUTO_INCREMENT (causa: "Column 'id_devolucion' cannot be null").
+    // El INSERT nunca envía el id; MySQL lo genera.
+    await repararAutoIncrementDevoluciones(pool);
+}
+
+// Asegura que las PK de devoluciones/detalle/kardex sean AUTO_INCREMENT.
+// Idempotente y silenciosa: si ya lo son, el ALTER no cambia nada.
+async function repararAutoIncrementDevoluciones(db) {
+    const reparaciones = [
+        'ALTER TABLE devoluciones MODIFY COLUMN id_devolucion INT NOT NULL AUTO_INCREMENT',
+        'ALTER TABLE detalle_devoluciones MODIFY COLUMN id_detalle INT NOT NULL AUTO_INCREMENT',
+        'ALTER TABLE kardex MODIFY COLUMN id_kardex INT NOT NULL AUTO_INCREMENT'
+    ];
+    for (const sql of reparaciones) {
+        try { await db.query(sql); } catch (e) {
+            // Tablas ausentes o sin permiso ALTER: ensureTables ya las crea;
+            // no se interrumpe el flujo, solo se registra.
+            if (e && e.code !== 'ER_NO_SUCH_TABLE') console.warn('[devoluciones] reparación AUTO_INCREMENT omitida:', e.message);
+        }
+    }
 }
 
 function getCostoCol() {
@@ -526,6 +547,7 @@ async function obtenerDevolucionesPorProducto(idProducto) {
 
 module.exports = {
     ensureTables,
+    repararAutoIncrementDevoluciones,
     obtenerProductosPorProveedor,
     obtenerProductosActivosDisponiblesParaAsociar,
     asociarProductoProveedor,

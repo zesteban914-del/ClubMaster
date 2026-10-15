@@ -1213,6 +1213,13 @@ async function migrate() {
         `);
         console.log('Tabla detalle_devoluciones verificada/creada.');
 
+        // Reparación raíz del error "Column 'id_devolucion' cannot be null":
+        // instalaciones creadas con una versión sin AUTO_INCREMENT quedan
+        // reparadas de forma idempotente. Los INSERT nunca envían el id.
+        try { await connection.query('ALTER TABLE devoluciones MODIFY COLUMN id_devolucion INT NOT NULL AUTO_INCREMENT'); } catch (e) {}
+        try { await connection.query('ALTER TABLE detalle_devoluciones MODIFY COLUMN id_detalle INT NOT NULL AUTO_INCREMENT'); } catch (e) {}
+        console.log('PK de devoluciones/detalle verificadas como AUTO_INCREMENT.');
+
         // ---- Historial / kardex de movimientos de inventario ----
         await connection.query(`
             CREATE TABLE IF NOT EXISTS kardex (
@@ -1231,6 +1238,7 @@ async function migrate() {
         `);
         try { await connection.query('ALTER TABLE kardex MODIFY COLUMN tipo_movimiento VARCHAR(80) NOT NULL'); } catch (e) {}
         try { await connection.query('ALTER TABLE kardex MODIFY COLUMN referencia VARCHAR(150) NULL'); } catch (e) {}
+        try { await connection.query('ALTER TABLE kardex MODIFY COLUMN id_kardex INT NOT NULL AUTO_INCREMENT'); } catch (e) {}
         console.log('Tabla kardex (historial de inventario) verificada/creada.');
 
         // ---- Permisos rol -> zonas para mesas (estructura vs operativa) ----

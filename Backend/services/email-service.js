@@ -9,6 +9,12 @@
 //
 // Orden de seleccion (MAIL_PROVIDER puede forzar uno):
 //   auto (defecto) -> resend -> brevo -> smtp
+// Requisitos por proveedor (basta UNO completo):
+//   resend: RESEND_API_KEY + RESEND_FROM (o MAIL_FROM)
+//   brevo:  BREVO_API_KEY + BREVO_FROM (o MAIL_FROM)
+//   smtp:   SMTP_HOST + SMTP_PORT + SMTP_USER + SMTP_PASS + MAIL_FROM
+// El mensaje al usuario final es genérico; el detalle de variables
+// faltantes solo se escribe en los logs del backend.
 //
 // Ningun secreto vive en el codigo: todo sale de process.env.
 // =========================================================
@@ -33,6 +39,32 @@ function remitente(){
     ).trim();
 }
 
+// Remitente efectivo POR proveedor (un proveedor solo cuenta si su
+// propio FROM está completo; MAIL_FROM/SMTP_USER sirven de respaldo).
+function remitenteResend(){
+    return String(process.env.RESEND_FROM || process.env.MAIL_FROM || '').trim();
+}
+
+function remitenteBrevo(){
+    return String(process.env.BREVO_FROM || process.env.MAIL_FROM || '').trim();
+}
+
+function remitenteSmtp(){
+    return String(process.env.MAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
+}
+
+function smtpPass(){
+    return String(process.env.SMTP_PASS || process.env.EMAIL_PASS || '');
+}
+
+function resendListo(){ return Boolean(process.env.RESEND_API_KEY && remitenteResend()); }
+function brevoListo(){
+    return Boolean(process.env.BREVO_API_KEY && remitenteBrevo());
+}
+function smtpListo(){
+    return Boolean(process.env.SMTP_HOST && (process.env.SMTP_USER || process.env.EMAIL_USER) && smtpPass() && remitenteSmtp());
+}
+
 function nombreRemitente(){
     return String(process.env.MAIL_FROM_NAME || 'ClubMaster').trim() || 'ClubMaster';
 }
@@ -40,11 +72,10 @@ function nombreRemitente(){
 function obtenerProveedor(){
     const forzado = String(process.env.MAIL_PROVIDER || '').toLowerCase().trim();
     const orden = (forzado && forzado !== 'auto') ? [forzado] : ['resend', 'brevo', 'smtp'];
-    const desde = remitente();
     for (const p of orden) {
-        if (p === 'resend' && process.env.RESEND_API_KEY && desde) return 'resend';
-        if (p === 'brevo' && process.env.BREVO_API_KEY && desde) return 'brevo';
-        if (p === 'smtp' && process.env.SMTP_HOST && (process.env.SMTP_USER || process.env.EMAIL_USER)) return 'smtp';
+        if (p === 'resend' && resendListo()) return 'resend';
+        if (p === 'brevo' && brevoListo()) return 'brevo';
+        if (p === 'smtp' && smtpListo()) return 'smtp';
     }
     return null;
 }
@@ -59,11 +90,17 @@ function estado(){
     if (forzado && forzado !== 'auto' && forzado !== 'resend' && forzado !== 'brevo' && forzado !== 'smtp') {
         return { configurado: false, proveedor: null, detalle: 'MAIL_PROVIDER tiene un valor desconocido ("' + forzado + '"). Use resend, brevo, smtp o auto.' };
     }
+    // Detalle técnico SOLO para logs del backend (nunca al usuario final).
     const faltan = [];
     if (!process.env.RESEND_API_KEY) faltan.push('RESEND_API_KEY');
+    if (!remitenteResend()) faltan.push('RESEND_FROM (o MAIL_FROM)');
     if (!process.env.BREVO_API_KEY) faltan.push('BREVO_API_KEY');
+    if (!remitenteBrevo()) faltan.push('BREVO_FROM (o MAIL_FROM)');
     if (!process.env.SMTP_HOST) faltan.push('SMTP_HOST');
-    if (!remitente()) faltan.push('RESEND_FROM (o MAIL_FROM / SMTP_USER)');
+    if (!process.env.SMTP_PORT) faltan.push('SMTP_PORT');
+    if (!(process.env.SMTP_USER || process.env.EMAIL_USER)) faltan.push('SMTP_USER');
+    if (!smtpPass()) faltan.push('SMTP_PASS');
+    if (!remitenteSmtp()) faltan.push('MAIL_FROM');
     return {
         configurado: false,
         proveedor: null,
@@ -206,7 +243,7 @@ async function mensajeErrorProveedor(respuesta) {
 }
 
 async function enviarPorResend({ para, asunto, texto, html, adjuntos }) {
-    const desde = remitente();
+    const desde = remitenteResend() || remitente();
     const respuesta = await fetchConTimeout('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -238,7 +275,7 @@ function emailSolo(s) {
 }
 
 async function enviarPorBrevo({ para, asunto, texto, html, adjuntos }) {
-    const desde = emailSolo(remitente());
+    const desde = emailSolo(remitenteBrevo() || remitente());
     const respuesta = await fetchConTimeout('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -302,8 +339,10 @@ async function enviarReportes({ correos, asunto, texto, adjuntos }) {
     const proveedor = obtenerProveedor();
     if (!proveedor) {
         const st = estado();
-        const err = new Error('El envío por correo no está configurado. ' + st.detalle);
+        console.error('[correo] Envío no configurado. Detalle técnico (solo servidor): ' + st.detalle);
+        const err = new Error('El envío por correo no está configurado, contacta al administrador');
         err.noConfigurado = true;
+        err.detalleTecnico = st.detalle;
         throw err;
     }
     if (!Array.isArray(correos) || !correos.length) throw new Error('Debe indicar al menos un correo de destino');

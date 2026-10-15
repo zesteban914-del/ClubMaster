@@ -852,9 +852,13 @@ img, video, canvas, svg { max-width: 100%; }
     padding: 24px; font-family: 'Courier New', monospace; max-width: 520px; margin: 0 auto;
 }
 @media print {
-    body * { visibility: hidden; }
-    #printPagare, #printPagare *, .dk-pagare, .dk-pagare * { visibility: visible; }
-    #printPagare { position: absolute; left: 0; top: 0; width: 100%; }
+    /* Solo se oculta el resto del body cuando se imprime un pagaré
+       dedicado (body.print-pagare-mode). Sin esa clase, window.print()
+       de reportes/caja imprime el contenido visible normalmente. */
+    body.print-pagare-mode * { visibility: hidden; }
+    body.print-pagare-mode #printPagare, body.print-pagare-mode #printPagare *,
+    body.print-pagare-mode .dk-pagare, body.print-pagare-mode .dk-pagare * { visibility: visible; }
+    body.print-pagare-mode #printPagare { position: absolute; left: 0; top: 0; width: 100%; }
 }
 
 /* =========================================================

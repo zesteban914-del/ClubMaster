@@ -43,6 +43,7 @@ module.exports = {
     crearMovimientoCaja: jornadaService.crearMovimientoCaja,
     calcularYGuardarArqueo: jornadaService.calcularYGuardarArqueo,
     obtenerReporteJornada: jornadaService.obtenerReporteJornada,
+    obtenerResumenCierreCaja: jornadaService.obtenerResumenCierreCaja,
     obtenerMetodosPagoCatalogo: jornadaService.obtenerMetodosPagoCatalogo,
 
     obtenerProductosAdmin: productoService.obtenerProductosAdmin,

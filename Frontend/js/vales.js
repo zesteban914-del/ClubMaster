@@ -668,8 +668,13 @@ function imprimirPagare() {
     var printer = document.getElementById('printPagare');
     printer.innerHTML = contenido.innerHTML;
     printer.style.display = 'block';
+    try { document.body.classList.add('print-pagare-mode'); } catch (e) {}
     window.print();
-    setTimeout(function() { printer.style.display = 'none'; printer.innerHTML = ''; }, 300);
+    setTimeout(function() {
+        printer.style.display = 'none';
+        printer.innerHTML = '';
+        try { document.body.classList.remove('print-pagare-mode'); } catch (e) {}
+    }, 300);
 }
 
 // =========================================================

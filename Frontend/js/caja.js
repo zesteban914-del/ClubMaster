@@ -1264,6 +1264,9 @@ function cerrarJornadaPos() {
                 var bh=document.getElementById('badgeEstadoCajaHeader'); if(bh) bh.innerHTML=badgeEstadoHTML('CERRADA',true);
                 mostrarAlerta('success', 'Jornada #' + Number(data.jornada.id_jornada) + ' cerrada. ' + tipoDiferencia(fNum(data.resumen.diferencia)) + ' ' + fM(data.resumen.diferencia));
                 renderVistaCaja();
+                // Modal de resumen de la jornada cerrada (punto 4): se muestra
+                // automáticamente tras el cierre exitoso.
+                try { mostrarModalResumenCierre(Number(data.jornada.id_jornada)); } catch (e) { console.error('resumen cierre', e); }
             } else {
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Confirmar y Cerrar Jornada'; }
                 mostrarAlerta('danger', (data && data.mensaje) || 'Error al cerrar la jornada');
@@ -1735,6 +1738,191 @@ function imprimirTicketCierre(formato) {
     w.focus();
     if (formato === 'pdf') {
         mostrarAlerta('info', 'En el dialogo de impresion, elija "Guardar como PDF" como destino.');
+    }
+}
+
+// =========================================================
+// 10B. MODAL RESUMEN AL CERRAR CAJA (jornada completa)
+// Se muestra automáticamente tras el cierre exitoso. Contenido:
+// negocio, fecha, apertura/cierre, cajero, venta total, n° ventas,
+// desglose por método de pago, productos agrupados (mayor a menor
+// venta), total general y cuadre (base/esperado/diferencia).
+// =========================================================
+
+var resumenCierreActual = null;
+var modalResumenCierreBS = null;
+
+function mostrarModalResumenCierre(idJornada) {
+    fetch(API_BASE + '/api/jornada/' + idJornada + '/resumen-cierre')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data || !data.success) {
+                mostrarAlerta('warning', 'Cierre registrado, pero no se pudo cargar el resumen.');
+                return;
+            }
+            resumenCierreActual = data;
+            insertarModalResumenCierre();
+            document.getElementById('contenidoResumenCierre').innerHTML = renderResumenCierreHtml(data);
+            var titulo = document.getElementById('tituloModalResumenCierre');
+            if (titulo) titulo.innerHTML = '<i class="bi bi-receipt-cutoff me-2"></i>Resumen de cierre — Jornada #' + data.jornada.id_jornada;
+            if (!modalResumenCierreBS) modalResumenCierreBS = new bootstrap.Modal(document.getElementById('modalResumenCierre'));
+            modalResumenCierreBS.show();
+        })
+        .catch(function() {
+            mostrarAlerta('warning', 'Cierre registrado, pero no se pudo cargar el resumen.');
+        });
+}
+
+function insertarModalResumenCierre() {
+    if (document.getElementById('modalResumenCierre')) return;
+    var cont = document.createElement('div');
+    cont.innerHTML =
+        '<div class="modal fade" id="modalResumenCierre" tabindex="-1" aria-hidden="true">' +
+        '<div class="modal-dialog modal-lg modal-dialog-scrollable">' +
+        '<div class="modal-content">' +
+        '<div class="modal-header"><h5 class="modal-title" id="tituloModalResumenCierre"><i class="bi bi-receipt-cutoff me-2"></i>Resumen de cierre</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>' +
+        '<div class="modal-body" style="background:#f8fafc"><div id="contenidoResumenCierre" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div></div>' +
+        '<div class="modal-footer" style="border-top:1px solid #e2e8f0;background:#fff;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
+        '<button type="button" class="btn btn-light" style="border-radius:8px;font-weight:600" data-bs-dismiss="modal">Cerrar</button>' +
+        '<button type="button" class="btn btn-outline-secondary" style="border-radius:8px;font-weight:700" onclick="enviarResumenCierrePorCorreo()"><i class="bi bi-envelope me-1"></i>Enviar por correo</button>' +
+        '<button type="button" class="btn btn-dark" style="border-radius:8px;font-weight:700" onclick="imprimirResumenCierre(\'termico80\')"><i class="bi bi-printer me-1"></i>Ticket 80mm</button>' +
+        '<button type="button" class="btn btn-primary" style="border-radius:8px;font-weight:700" onclick="imprimirResumenCierre(\'a4\')"><i class="bi bi-file-earmark-text me-1"></i>Imprimir factura</button>' +
+        '</div></div></div></div>';
+    document.body.appendChild(cont);
+}
+
+function renderResumenCierreHtml(d) {
+    var j = d.jornada || {};
+    var diff = fNum(j.diferencia);
+    var etiq = diff === 0 ? 'CUADRE PERFECTO' : (diff > 0 ? 'SOBRANTE' : 'FALTANTE');
+    var html =
+        '<div style="text-align:center;margin-bottom:12px">' +
+        '<div style="font-weight:800;font-size:1.15rem;color:#0f172a">' + escHTML(d.negocio || 'ClubMaster') + '</div>' +
+        '<div style="font-size:0.78rem;color:#64748b">Resumen de la jornada #' + j.id_jornada + ' · ' + escHTML(j.barra_asignada || 'Caja Principal') + '</div>' +
+        '<div style="font-size:0.78rem;color:#64748b">Apertura: ' + escHTML(fFecha(j.fecha_apertura)) + ' (' + escHTML(j.usuario_apertura || '--') + ') · Cierre: ' + escHTML(fFecha(j.fecha_cierre)) + ' (' + escHTML(j.usuario_cierre || '--') + ')</div>' +
+        '</div>' +
+        '<div class="row g-2 mb-3">' +
+        '<div class="col-6"><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;text-align:center"><div style="font-size:0.68rem;font-weight:700;color:#64748b">VENTA TOTAL DE LA NOCHE</div><div style="font-weight:800;font-size:1.2rem;color:#0f172a">' + fM(d.venta_total) + '</div></div></div>' +
+        '<div class="col-6"><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;text-align:center"><div style="font-size:0.68rem;font-weight:700;color:#64748b">NÚMERO DE VENTAS</div><div style="font-weight:800;font-size:1.2rem;color:#0f172a">' + d.num_ventas + '</div></div></div>' +
+        '</div>' +
+        '<div style="font-size:0.78rem;font-weight:800;color:#0f172a;margin-bottom:6px"><i class="bi bi-credit-card me-1"></i>Desglose por método de pago</div>' +
+        '<div class="table-responsive" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:12px"><table class="table table-sm mb-0"><thead style="background:#f8fafc"><tr><th>Método</th><th class="text-center">Ventas</th><th class="text-end">Subtotal</th></tr></thead><tbody>';
+    if (!d.desglose_metodos || !d.desglose_metodos.length) {
+        html += '<tr><td colspan="3" style="text-align:center;color:#94a3b8">Sin ventas en el turno</td></tr>';
+    } else {
+        d.desglose_metodos.forEach(function(m) {
+            html += '<tr><td style="font-weight:600">' + escHTML(etiquetaMetodo(m.metodo_pago, m.sub_metodo)) + '</td>' +
+                '<td class="text-center">' + m.cantidad + '</td>' +
+                '<td class="text-end" style="font-weight:700">' + fM(m.subtotal) + '</td></tr>';
+        });
+    }
+    html += '</tbody></table></div>' +
+        '<div style="font-size:0.78rem;font-weight:800;color:#0f172a;margin-bottom:6px"><i class="bi bi-box-seam me-1"></i>Productos vendidos (mayor a menor venta)</div>' +
+        '<div class="table-responsive" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:12px"><table class="table table-sm mb-0"><thead style="background:#f8fafc"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-end">Precio unit.</th><th class="text-end">Subtotal</th></tr></thead><tbody>';
+    if (!d.productos || !d.productos.length) {
+        html += '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Sin productos vendidos en el turno</td></tr>';
+    } else {
+        d.productos.forEach(function(p) {
+            html += '<tr><td style="font-weight:600">' + escHTML(p.nombre) + '</td>' +
+                '<td class="text-center">' + p.cantidad_total + '</td>' +
+                '<td class="text-end">' + fM(p.precio_unitario) + '</td>' +
+                '<td class="text-end" style="font-weight:700">' + fM(p.subtotal_total) + '</td></tr>';
+        });
+    }
+    html += '</tbody><tfoot><tr style="background:#0f172a"><td colspan="3" style="text-align:right;font-weight:800;color:#fff">TOTAL GENERAL</td><td style="text-align:right;font-weight:800;color:#4ade80">' + fM(d.venta_total) + '</td></tr></tfoot></table></div>' +
+        '<div style="background:#0f172a;color:#fff;border-radius:10px;padding:12px 14px;font-size:0.82rem">' +
+        '<div style="display:flex;justify-content:space-between"><span>Base inicial</span><span>' + fM(j.monto_inicial) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between"><span>Efectivo esperado</span><span>' + fM(j.esperado) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between"><span>Conteo físico</span><span>' + fM(j.conteo_fisico) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;font-weight:800"><span>Diferencia [' + etiq + ']</span><span>' + (diff > 0 ? '+' : '') + fM(diff) + '</span></div>' +
+        '</div>';
+    return html;
+}
+
+function resumenCierreParaImprimir() {
+    var d = resumenCierreActual;
+    if (!d) return null;
+    var j = d.jornada || {};
+    var diff = fNum(j.diferencia);
+    var etiq = diff === 0 ? 'CUADRE PERFECTO' : (diff > 0 ? 'SOBRANTE' : 'FALTANTE');
+    var meta = 'Jornada #' + j.id_jornada + ' · ' + escHTML(j.barra_asignada || 'Caja Principal') +
+        '<br>Apertura: ' + escHTML(fFecha(j.fecha_apertura)) + ' (' + escHTML(j.usuario_apertura || '--') + ')' +
+        ' · Cierre: ' + escHTML(fFecha(j.fecha_cierre)) + ' (' + escHTML(j.usuario_cierre || '--') + ')' +
+        '<br>Ventas: ' + d.num_ventas + ' · Venta total: ' + fM(d.venta_total);
+    var cuerpo = '<h3 style="margin:8px 0 4px">Desglose por método de pago</h3>' +
+        '<table><thead><tr><th>Método</th><th class="num">Ventas</th><th class="num">Subtotal</th></tr></thead><tbody>';
+    if (!d.desglose_metodos || !d.desglose_metodos.length) {
+        cuerpo += '<tr><td colspan="3">Sin ventas en el turno</td></tr>';
+    } else {
+        d.desglose_metodos.forEach(function(m) {
+            cuerpo += '<tr><td>' + escHTML(etiquetaMetodo(m.metodo_pago, m.sub_metodo)) + '</td><td class="num">' + m.cantidad + '</td><td class="num">' + fM(m.subtotal) + '</td></tr>';
+        });
+    }
+    cuerpo += '</tbody></table>' +
+        '<h3 style="margin:8px 0 4px">Productos vendidos (mayor a menor venta)</h3>' +
+        '<table><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio unit.</th><th class="num">Subtotal</th></tr></thead><tbody>';
+    if (!d.productos || !d.productos.length) {
+        cuerpo += '<tr><td colspan="4">Sin productos vendidos en el turno</td></tr>';
+    } else {
+        d.productos.forEach(function(p) {
+            cuerpo += '<tr><td>' + escHTML(p.nombre) + '</td><td class="num">' + p.cantidad_total + '</td><td class="num">' + fM(p.precio_unitario) + '</td><td class="num">' + fM(p.subtotal_total) + '</td></tr>';
+        });
+    }
+    cuerpo += '</tbody></table>' +
+        '<div class="cm-total"><span>TOTAL GENERAL</span><span>' + fM(d.venta_total) + '</span></div>' +
+        '<p>Base inicial: ' + fM(j.monto_inicial) + ' · Esperado: ' + fM(j.esperado) +
+        ' · Físico: ' + fM(j.conteo_fisico) + ' · Diferencia [' + etiq + ']: ' + (diff > 0 ? '+' : '') + fM(diff) + '</p>';
+    return { negocio: d.negocio || 'ClubMaster', meta: meta, cuerpo: cuerpo, id: j.id_jornada };
+}
+
+function imprimirResumenCierre(formato) {
+    // Usa el helper unificado (A4) o formato térmico 80mm.
+    try {
+        var datos = resumenCierreParaImprimir();
+        if (!datos) { mostrarAlerta('warning', 'No hay resumen para imprimir.'); return; }
+        if (typeof ClubMasterPrint === 'undefined') { window.print(); return; }
+        ClubMasterPrint.imprimir({
+            titulo: 'Resumen de cierre — Jornada #' + datos.id,
+            negocio: datos.negocio,
+            metaHtml: datos.meta,
+            cuerpoHtml: datos.cuerpo,
+            formato: formato === 'termico80' ? 'termico80' : 'a4'
+        });
+    } catch (e) { try { window.print(); } catch (e2) {} }
+}
+
+function enviarResumenCierrePorCorreo() {
+    // Reutiliza el servicio de correo de reportes (punto 2): envía el
+    // reporte de cierres de caja de esta jornada como adjunto PDF.
+    try {
+        if (typeof repAbrirCorreoModal !== 'function') {
+            mostrarAlerta('warning', 'El servicio de correo no está disponible en esta vista.');
+            return;
+        }
+        fetch(API_BASE + '/api/reportes/config-correo', { headers: { 'Accept': 'application/json' } })
+            .then(function(r) { return r.json(); })
+            .then(function(cfg) {
+                if (!cfg || !cfg.success || !cfg.configured) {
+                    mostrarAlerta('warning', 'El envío por correo no está configurado, contacta al administrador');
+                    return;
+                }
+                try {
+                    if (modalResumenCierreBS) modalResumenCierreBS.hide();
+                } catch (e) {}
+                repCurrentCat = 'ticket';
+                repCurrentId = 'ticket_cierres';
+                try {
+                    if (typeof repFiltros !== 'undefined' && resumenCierreActual && resumenCierreActual.jornada) {
+                        repFiltros.id_jornada = String(resumenCierreActual.jornada.id_jornada);
+                    }
+                } catch (e) {}
+                repAbrirCorreoModal();
+            })
+            .catch(function() {
+                mostrarAlerta('danger', 'No se pudo verificar la configuración de correo.');
+            });
+    } catch (e) {
+        mostrarAlerta('danger', 'No se pudo abrir el envío por correo.');
     }
 }
 

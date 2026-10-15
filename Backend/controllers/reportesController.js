@@ -419,13 +419,14 @@ async function enviarCorreo(req, res){
     try{
         const body = req.body || {};
 
-        // 1. Proveedor de correo
+        // 1. Proveedor de correo (mensaje simple al usuario; detalle solo en logs)
         const st = emailService.estado();
         if(!st.configurado){
+            console.error('[correo] POST /api/reportes/enviar-correo sin proveedor. Detalle técnico (solo servidor): ' + st.detalle);
             return res.status(503).json({
                 success: false,
                 codigo: 'correo_no_configurado',
-                mensaje: 'El envío por correo no está configurado. '+st.detalle+'. Configure las variables de entorno de correo (RESEND_API_KEY/RESEND_FROM, BREVO_API_KEY/BREVO_FROM o SMTP_HOST/SMTP_USER/SMTP_PASS) en el servidor.'
+                mensaje: 'El envío por correo no está configurado, contacta al administrador'
             });
         }
 
@@ -539,7 +540,8 @@ async function enviarCorreo(req, res){
             envio = await emailService.enviarReportes({ correos: correos, asunto: asunto, texto: mensaje, adjuntos: adjuntos });
         }catch(eEnvio){
             if(eEnvio.noConfigurado){
-                return res.status(503).json({ success:false, codigo:'correo_no_configurado', mensaje: eEnvio.message });
+                if(eEnvio.detalleTecnico) console.error('[correo] Envío fallido sin proveedor. Detalle técnico (solo servidor): ' + eEnvio.detalleTecnico);
+                return res.status(503).json({ success:false, codigo:'correo_no_configurado', mensaje: 'El envío por correo no está configurado, contacta al administrador' });
             }
             console.error('enviarCorreo envio:', eEnvio.message);
             return res.status(502).json({ success:false, mensaje:'No se pudo enviar el correo: '+eEnvio.message });

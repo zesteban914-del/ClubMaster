@@ -429,6 +429,101 @@ async function obtenerReporteJornada(idJornada) {
         arqueo);
 }
 
+// ============================================================
+// Resumen agregado de cierre de caja para el modal post-cierre.
+// Productos agrupados con GROUP BY sobre el detalle de ventas del
+// turno; excluye ventas anuladas (solo estado 'Pagado').
+// ============================================================
+async function obtenerResumenCierreCaja(idJornada) {
+    const [filas] = await pool.query('SELECT * FROM jornadas WHERE id_jornada = ?', [idJornada]);
+    if (filas.length === 0) return null;
+    const jornada = filas[0];
+    const resumen = await obtenerResumenJornadaCompleto(pool, idJornada);
+    const usuarios = await obtenerUsuariosJornada(pool, jornada);
+
+    let negocio = 'ClubMaster';
+    try {
+        const [cfg] = await pool.query("SELECT valor FROM configuracion_general WHERE clave='nombre_local' LIMIT 1");
+        if (cfg.length && cfg[0].valor) negocio = String(cfg[0].valor).trim() || negocio;
+    } catch (e) {}
+
+    let productos = [];
+    try {
+        const [rows] = await pool.query(`
+            SELECT dp.id_producto,
+                   COALESCE(p.nombre, CONCAT('Producto #', dp.id_producto)) AS nombre,
+                   COALESCE(SUM(dp.cantidad), 0) AS cantidad_total,
+                   COALESCE(AVG(dp.precio_unitario), 0) AS precio_unitario,
+                   COALESCE(SUM(dp.subtotal), 0) AS subtotal_total,
+                   COUNT(DISTINCT dp.id_pedido) AS num_ventas
+            FROM detalle_pedido dp
+            INNER JOIN pedidos ped ON dp.id_pedido = ped.id_pedido
+            LEFT JOIN productos p ON dp.id_producto = p.id_producto
+            WHERE ped.id_jornada = ? AND ped.estado = 'Pagado'
+            GROUP BY dp.id_producto, p.nombre
+            ORDER BY subtotal_total DESC
+        `, [idJornada]);
+        productos = rows.map(function(r) {
+            return {
+                id_producto: r.id_producto,
+                nombre: r.nombre,
+                cantidad_total: Number(r.cantidad_total) || 0,
+                precio_unitario: Number(r.precio_unitario) || 0,
+                subtotal_total: Number(r.subtotal_total) || 0,
+                num_ventas: Number(r.num_ventas) || 0
+            };
+        });
+    } catch (e) { productos = []; }
+
+    let numVentas = 0;
+    let ventaTotal = 0;
+    try {
+        const [tot] = await pool.query(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(total), 0) AS t FROM pedidos WHERE id_jornada = ? AND estado = 'Pagado'",
+            [idJornada]
+        );
+        if (tot.length) {
+            numVentas = Number(tot[0].n) || 0;
+            ventaTotal = Number(tot[0].t) || 0;
+        }
+    } catch (e) {}
+
+    const desglose = (resumen.desglose || []).map(function(r) {
+        return {
+            metodo_pago: r.metodo_pago,
+            sub_metodo: r.sub_metodo || '',
+            cantidad: Number(r.cantidad) || 0,
+            subtotal: Number(r.subtotal) || 0
+        };
+    });
+
+    return {
+        negocio: negocio,
+        jornada: {
+            id_jornada: jornada.id_jornada,
+            fecha_apertura: jornada.fecha_apertura,
+            fecha_cierre: jornada.fecha_cierre,
+            barra_asignada: jornada.barra_asignada || 'Caja Principal',
+            estado: jornada.estado,
+            monto_inicial: Number(jornada.monto_inicial || 0),
+            usuario_apertura: (usuarios && usuarios.usuario_apertura) || '',
+            usuario_cierre: (usuarios && usuarios.usuario_cierre) || '',
+            esperado: Number(jornada.total_efectivo_esperado || 0),
+            conteo_fisico: Number(jornada.conteo_fisico || jornada.total_efectivo_real || 0),
+            diferencia: Number(jornada.diferencia || 0)
+        },
+        venta_total: ventaTotal,
+        num_ventas: numVentas,
+        desglose_metodos: desglose,
+        productos: productos,
+        propina_efectivo: Number(resumen.propina_efectivo || 0),
+        propina_tarjeta: Number(resumen.propina_tarjeta || 0),
+        ingresos_extra: Number(resumen.ingresos_extra || 0),
+        gastos_efectivo: Number(resumen.gastos_efectivo || 0),
+        ventas_netas: Number(resumen.ventas_netas || 0)
+    };
+}
+
 async function crearMovimientoCaja(datos) {
     const [result] = await pool.query(
         `INSERT INTO movimientos_caja (id_jornada, id_usuario, tipo, categoria, concepto, monto, numero_comprobante, justificacion)
@@ -460,6 +555,7 @@ module.exports = {
     crearMovimientoCaja,
     calcularYGuardarArqueo,
     obtenerReporteJornada,
+    obtenerResumenCierreCaja,
     obtenerMetodosPagoCatalogo,
     calcularEfectivoEsperado,
     calcularConteoFisico,

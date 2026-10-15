@@ -68,7 +68,8 @@ function mensajeWhatsApp({ cat, id, filtros, formato }) {
 async function generarPDF({ cat, id, filtros, reportData }) {
   if (!PDFDocument) throw new Error('pdfkit no instalado. Ejecute: npm install pdfkit');
   const titulo = getTituloReporte(cat, id);
-  const doc = new PDFDocument({ size:'A4', margin: 36, info:{ Title: titulo, Author:'ClubMaster' } });
+  // bufferPages:true para poder numerar el pie sin escribir fuera de página.
+  const doc = new PDFDocument({ size:'A4', margin: 36, bufferPages: true, info:{ Title: titulo, Author:'ClubMaster' } });
   const chunks = [];
   doc.on('data', c=> chunks.push(c));
   const endPromise = new Promise(res=> doc.on('end', ()=> res(Buffer.concat(chunks))));
@@ -95,39 +96,46 @@ async function generarPDF({ cat, id, filtros, reportData }) {
     doc.moveDown(0.2);
   }
   function table(headers, rows, colWidths){
-    const startY = doc.y;
     const tableX = 36;
     const availW = doc.page.width - 72;
     const widths = colWidths || headers.map(()=> availW/headers.length);
-    // header row
-    let x = tableX;
+    const data = Array.isArray(rows) ? rows : [];
+    if (!data.length) {
+      // Nunca un reporte vacío: mensaje explícito en lugar de tabla en blanco.
+      doc.fillColor('#64748b').fontSize(8).font('Helvetica')
+        .text('Sin datos para los filtros seleccionados.', tableX, doc.y + 4, { width: availW });
+      doc.moveDown(0.8);
+      return;
+    }
+    // Fila de encabezado con cursor Y explícito (doc.text con x/y no mueve
+    // doc.y de forma predecible; por eso se fija a mano).
     const h = 18;
-    doc.rect(tableX, doc.y, availW, h).fill('#0f172a');
+    if (doc.y + h > doc.page.height - 60) doc.addPage();
+    let yHead = doc.y;
+    doc.rect(tableX, yHead, availW, h).fill('#0f172a');
     doc.fillColor('#fff').fontSize(6.5).font('Helvetica-Bold');
+    let x = tableX;
     headers.forEach((hh,i)=>{
-      doc.text(String(hh), x+4, doc.y+6, { width: widths[i]-8, align: i===0? 'left':'right' });
+      doc.text(String(hh), x+4, yHead+6, { width: widths[i]-8, align: i===0? 'left':'right', lineBreak: false });
       x += widths[i];
     });
-    doc.moveDown(1.2);
-    // rows
-    doc.font('Helvetica').fontSize(6.5).fillColor('#0f172a');
-    rows.forEach((row, idx)=>{
+    doc.y = yHead + h + 2;
+    // Filas con cursor Y explícito: fondo, texto negro y salto de página
+    // antes de pintar fuera del área imprimible.
+    doc.font('Helvetica').fontSize(6.5);
+    data.forEach((row, idx)=>{
       const rowH = 14;
-      if (doc.y + rowH > doc.page.height - 50) { doc.addPage(); }
-      if (idx%2===0) doc.rect(tableX, doc.y, availW, rowH).fill('#f8fafc');
-      else doc.rect(tableX, doc.y, availW, rowH).fill('#fff');
-      // need to reset y for text
-      const yText = doc.y + 4.5;
-      let cx = tableX;
+      if (doc.y + rowH > doc.page.height - 60) doc.addPage();
+      const yRow = doc.y;
+      doc.rect(tableX, yRow, availW, rowH).fill(idx%2===0 ? '#f8fafc' : '#ffffff');
       doc.fillColor('#0f172a');
-      row.forEach((cell,i)=>{
+      let cx = tableX;
+      (row || []).forEach((cell,i)=>{
         const align = i===0 ? 'left' : 'right';
-        doc.text(String(cell==null?'--':cell), cx+4, yText, { width: widths[i]-8, align });
+        doc.text(String(cell==null?'--':cell), cx+4, yRow+4.5, { width: widths[i]-8, align, lineBreak: false });
         cx += widths[i];
       });
-      doc.moveDown(0.9);
-      // move y to next line (approx)
-      // doc.y already advanced by text; ensure
+      doc.y = yRow + rowH + 1;
     });
     doc.moveDown(0.4);
   }
@@ -191,9 +199,15 @@ async function generarPDF({ cat, id, filtros, reportData }) {
     doc.fillColor('#dc2626').fontSize(8).text('Error render reporte: '+e.message);
   }
 
-  // Footer
-  const footerY = doc.page.height - 30;
-  doc.fontSize(6).fillColor('#94a3b8').text(`ClubMaster • Reporte ${cat}/${id} • Página ${doc.bufferedPageRange().count || 1} • Confidencial`, 36, footerY, { align:'center', width: doc.page.width-72 });
+  // Pie numerado en CADA página (con el buffer ya completo, antes de doc.end()).
+  const totalPags = doc.bufferedPageRange().count || 1;
+  for (let i = 0; i < totalPags; i++) {
+    doc.switchToPage(i);
+    doc.fontSize(6).fillColor('#94a3b8')
+      .text(`ClubMaster • Reporte ${cat}/${id} • Página ${i + 1} de ${totalPags} • Confidencial`,
+        36, doc.page.height - 30, { align: 'center', width: doc.page.width - 72 });
+  }
+  doc.flushPages();
 
   doc.end();
   const buffer = await endPromise;
@@ -227,7 +241,15 @@ async function generarExcel({ cat, id, filtros, reportData }) {
     const hr = ws.addRow(headers);
     hr.eachCell(c=> { c.fill=headerFill; c.font=headerFont; c.alignment={ vertical:'middle', horizontal:'center', wrapText:true }; c.border={ bottom:{style:'thin', color:{argb:'FFE2E8F0'}}}; });
     hr.height = 16;
-    rows.forEach(r=>{
+    const lista = Array.isArray(rows) ? rows : [];
+    if (!lista.length) {
+      // Nunca una hoja vacía: fila explícita en lugar de tabla en blanco.
+      const vacia = ws.addRow(['Sin datos para los filtros seleccionados']);
+      vacia.font = { size: 9, italic: true, color: { argb: 'FF64748B' } };
+      ws.addRow([]);
+      return;
+    }
+    lista.forEach(r=>{
       const row = ws.addRow(r);
       row.eachCell((c, idx)=>{
         c.font={ size:8 };

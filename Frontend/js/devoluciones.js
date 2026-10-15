@@ -287,7 +287,8 @@ function insertarModalesDevolucion() {
         '<div class="modal-header"><h5 class="modal-title" id="tituloModalDevolucionDetalle"><i class="bi bi-arrow-return-left me-2"></i>Detalle de Devolución</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>' +
         '<div class="modal-body" style="background:#f8fafc"><div id="contenidoDevolucionDetalle" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div></div>' +
         '<div class="modal-footer" style="border-top:1px solid #e2e8f0;background:#fff">' +
-        '<button type="button" class="btn btn-light" style="border-radius:8px;font-weight:600" data-bs-dismiss="modal">Cerrar</button></div>' +
+        '<button type="button" class="btn btn-light" style="border-radius:8px;font-weight:600" data-bs-dismiss="modal">Cerrar</button>' +
+        '<button type="button" class="btn btn-dark" style="border-radius:8px;font-weight:700" onclick="imprimirDetalleDevolucion()"><i class="bi bi-printer me-1"></i>Imprimir</button></div>' +
         '</div></div></div>' +
 
         '<div class="modal fade" id="modalDevolucionEstado" tabindex="-1" aria-hidden="true">' +
@@ -748,6 +749,17 @@ function renderDetalleDevolucion(d) {
     html += '</tbody><tfoot><tr><td colspan="5" style="text-align:right;font-weight:700;color:#334155">TOTAL DEVUELTO</td><td style="text-align:right;font-weight:800;color:#dc2626;font-size:1rem">' + devMoney(d.total_devuelto) + '</td></tr></tfoot></table></div>';
     if (d.usuario_nombre) html += '<div style="margin-top:10px;font-size:0.78rem;color:#94a3b8"><i class="bi bi-person me-1"></i>Registrada por: ' + devEsc(d.usuario_nombre) + '</div>';
     return html;
+}
+
+function imprimirDetalleDevolucion() {
+    // Helper unificado de impresión (fondo blanco, texto negro, A4).
+    try {
+        if (typeof ClubMasterPrint === 'undefined') { window.print(); return; }
+        ClubMasterPrint.imprimirElemento('#contenidoDevolucionDetalle', {
+            titulo: 'Detalle de devolución a proveedor',
+            formato: 'a4'
+        });
+    } catch (e) { try { window.print(); } catch (e2) {} }
 }
 
 function actualizarDevolucionesTrasCambio() {

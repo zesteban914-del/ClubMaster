@@ -252,9 +252,49 @@ function repEjecutarReporte(cat,id,ticket){
 }
 function repReportePreview(cat,id,ticket){ if(cat==='ticket' && id==='reimprimir'){ return '<div style="border:1px dashed #cbd5e1;border-radius:10px;padding:14px;background:#fff;font-family:monospace;font-size:.8rem"><div style="text-align:center;font-weight:800">CLUBMASTER<br><small style="font-weight:400">NIT 900.000.000-1</small></div><div style="border-top:1px dashed #e2e8f0;margin:10px 0"></div><div style="display:flex;gap:6px"><input id="repReimpInput" class="form-control form-control-sm" placeholder="No Factura" style="flex:1"><button class="btn btn-sm" style="background:#0f172a;color:#fff;border-radius:8px" onclick="repReimprimirBuscar()"><i class="bi bi-search"></i></button></div><div id="repReimpResult" style="margin-top:10px;color:#64748b;text-align:center;padding:12px"><i class="bi bi-receipt"></i> Ingrese numero</div></div>'; } return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;color:#64748b;font-size:.82rem">Vista previa: '+escH(id)+' - datos reales arriba</div>'; }
 function repAbrirModal(html){ var m=document.getElementById('repModal'); if(!m){ m=document.createElement('div'); m.id='repModal'; m.style.cssText='position:fixed;inset:0;z-index:1055;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:12px;backdrop-filter:blur(2px)'; m.innerHTML='<div id="repModalBox" style="width:100%;max-width:760px;max-height:90vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.35)"></div>'; m.addEventListener('click',function(e){ if(e.target===m) repCerrarModal(); }); document.body.appendChild(m); } document.getElementById('repModalBox').innerHTML=html; m.style.display='flex'; try{ document.body.style.overflow='hidden'; }catch(e){} if(!m._esc){ m._esc=true; document.addEventListener('keydown',function(e){ if(e.key==='Escape') repCerrarModal(); }); } }
-function repImprimirDetallado(){ try{ document.querySelectorAll('#repModalBox details').forEach(function(d){ d.open=true; }); }catch(e){} setTimeout(function(){ window.print(); }, 80); }
+function repImprimirDetallado(){
+    // Helper unificado: ventana de impresión propia (fondo blanco, texto
+    // negro, tablas con bordes, A4) con el contenido YA renderizado.
+    // Si los datos aún cargan, se avisa en lugar de imprimir en blanco.
+    try {
+        if (typeof ClubMasterPrint === 'undefined') { window.print(); return; }
+        var titulo = 'Reporte';
+        try {
+            var arr = REP_CATALOG[repCurrentCat] || [];
+            var rep = arr.find(function(r){ return r.id === repCurrentId; });
+            if (rep && rep.titulo) titulo = rep.titulo;
+        } catch (e) {}
+        var filtrosTxt = [];
+        if (repFiltros.fecha_inicio) filtrosTxt.push('Desde ' + repFiltros.fecha_inicio);
+        if (repFiltros.fecha_fin) filtrosTxt.push('Hasta ' + repFiltros.fecha_fin);
+        if (repFiltros.id_jornada) filtrosTxt.push('Jornada #' + repFiltros.id_jornada);
+        if (repFiltros.id_mesero) filtrosTxt.push('Empleado #' + repFiltros.id_mesero);
+        if (repFiltros.id_cajero) filtrosTxt.push('Cajero #' + repFiltros.id_cajero);
+        if (!filtrosTxt.length) filtrosTxt.push('Últimos 30 días');
+        var negocio = 'ClubMaster';
+        try { negocio = repCorreoNegocio() || negocio; } catch (e) {}
+        ClubMasterPrint.imprimirElemento('#repLive', {
+            titulo: titulo,
+            negocio: negocio,
+            metaHtml: 'Rango: ' + filtrosTxt.join(' • ') + ' — Generado: ' + new Date().toLocaleString('es-CO'),
+            formato: 'a4'
+        });
+    } catch (e) { try { window.print(); } catch (e2) {} }
+}
 function repCerrarModal(){ var m=document.getElementById('repModal'); if(m) m.style.display='none'; try{ document.body.style.overflow=''; }catch(e){} try{ if(repAbort) repAbort.abort(); }catch(e){} }
-function repReimprimirBuscar(){ var v=document.getElementById('repReimpInput').value.trim(); if(!v){ repError('Ingrese número de factura'); return; } if(!/^\d+$/.test(v)){ repError('Solo números'); return; } var r=document.getElementById('repReimpResult'); r.innerHTML='<div class="spinner-border spinner-border-sm text-primary"></div> Buscando...'; fetch(API_REPORTES+'/api/facturas/buscar?q='+encodeURIComponent(v)).then(function(res){return res.json().then(function(d){return {ok:res.ok,d:d};});}).then(function(w){ if(w.ok && w.d.success && w.d.factura){ var f=w.d.factura; r.innerHTML='<div style="text-align:left;font-family:monospace;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px"><div style="font-weight:800;text-align:center">FACTURA #'+escH(f.id_factura||f.id_pedido||v)+'<br><small>'+escH(f.fecha||f.timestamp_despacho||'')+'</small></div><div style="margin-top:8px">Total: <strong>'+fmtM(f.total||0)+'</strong><br>Metodo: '+escH(f.metodo_pago||'')+'<br>Estado: '+escH(f.estado||'')+'</div><button class="btn btn-sm w-100 mt-2" style="background:#0f172a;color:#fff;border-radius:8px" onclick="window.print()"><i class="bi bi-printer me-1"></i>Reimprimir</button></div>'; } else r.innerHTML='<div style="color:#dc2626">'+escH(w.d.mensaje||'No encontrada')+'</div>'; }).catch(function(){ r.innerHTML='<div class="alert alert-danger">No se pudo conectar</div>'; }); }
+function repReimprimirBuscar(){ var v=document.getElementById('repReimpInput').value.trim(); if(!v){ repError('Ingrese número de factura'); return; } if(!/^\d+$/.test(v)){ repError('Solo números'); return; } var r=document.getElementById('repReimpResult'); r.innerHTML='<div class="spinner-border spinner-border-sm text-primary"></div> Buscando...'; fetch(API_REPORTES+'/api/facturas/buscar?q='+encodeURIComponent(v)).then(function(res){return res.json().then(function(d){return {ok:res.ok,d:d};});}).then(function(w){ if(w.ok && w.d.success && w.d.factura){ var f=w.d.factura; r.innerHTML='<div style="text-align:left;font-family:monospace;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px"><div style="font-weight:800;text-align:center">FACTURA #'+escH(f.id_factura||f.id_pedido||v)+'<br><small>'+escH(f.fecha||f.timestamp_despacho||'')+'</small></div><div style="margin-top:8px">Total: <strong>'+fmtM(f.total||0)+'</strong><br>Metodo: '+escH(f.metodo_pago||'')+'<br>Estado: '+escH(f.estado||'')+'</div><button class="btn btn-sm w-100 mt-2" style="background:#0f172a;color:#fff;border-radius:8px" onclick="repImprimirReimpresion()"><i class="bi bi-printer me-1"></i>Reimprimir</button></div>'; } else r.innerHTML='<div style="color:#dc2626">'+escH(w.d.mensaje||'No encontrada')+'</div>'; }).catch(function(){ r.innerHTML='<div class="alert alert-danger">No se pudo conectar</div>'; }); }
+function repImprimirReimpresion(){
+    try {
+        if (typeof ClubMasterPrint === 'undefined') { window.print(); return; }
+        var negocio = 'ClubMaster';
+        try { negocio = repCorreoNegocio() || negocio; } catch (e) {}
+        ClubMasterPrint.imprimirElemento('#repReimpResult', {
+            titulo: 'Reimpresión de factura / ticket',
+            negocio: negocio,
+            formato: 'termico80'
+        });
+    } catch (e) { try { window.print(); } catch (e2) {} }
+}
 function repExportar(){ var tipo=document.getElementById('repExportTipo').value; var ok=['general','personal','zonas','margen','mermas','familias','nocturna']; if(ok.indexOf(tipo)===-1){ repError('Tipo de exportación inválido'); return; } var qs=repQs(); var url=API_REPORTES+'/api/reportes/export?tipo='+encodeURIComponent(tipo)+(qs.startsWith('?')?'&'+qs.substring(1):''); window.open(url,'_blank'); }
 var repRenderLiveBase = repRenderLive;
 repRenderLive = function(data, cat, id){

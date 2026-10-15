@@ -150,6 +150,21 @@ module.exports = function(app, db) {
         }
     });
 
+    // Resumen agregado del turno para el modal post-cierre (GROUP BY
+    // por producto sobre el detalle de ventas; excluye anuladas).
+    app.get('/api/jornada/:id/resumen-cierre', async (req, res) => {
+        try {
+            const resumen = await db.obtenerResumenCierreCaja(req.params.id);
+            if (!resumen) {
+                return res.status(404).json({ success: false, mensaje: 'Jornada no encontrada' });
+            }
+            res.json({ success: true, ...resumen });
+        } catch (error) {
+            console.error('Error al obtener resumen de cierre:', error.message);
+            res.status(500).json({ success: false, mensaje: 'Error al obtener resumen: ' + error.message });
+        }
+    });
+
     app.get('/api/movimientos-caja', async (req, res) => {
         const { id_jornada } = req.query;
         if (!id_jornada) {
