@@ -1,0 +1,7 @@
+# Nunca incluir credenciales ni dumps en la imagen.
+.env
+.env.*
+*.sql
+*.sql.gz
+*.dump
+__pycache__/
