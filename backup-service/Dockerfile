@@ -24,8 +24,5 @@ RUN pip3 install --no-cache-dir --break-system-packages -r /app/requirements.txt
 COPY backup.py /app/backup.py
 RUN chmod 644 /app/backup.py
 
-# Directorio temporal del dump (efímero, no se versiona ni se persiste).
-VOLUME ["/tmp"]
-
 # Una sola ejecución y termina. Railway lo invoca con su Cron Schedule.
 CMD ["python3", "/app/backup.py"]
