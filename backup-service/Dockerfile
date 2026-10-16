@@ -19,7 +19,7 @@ RUN if command -v microdnf >/dev/null 2>&1; then \
 WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r /app/requirements.txt
+RUN pip3 install --no-cache-dir -r /app/requirements.txt
 
 COPY backup.py /app/backup.py
 RUN chmod 644 /app/backup.py
