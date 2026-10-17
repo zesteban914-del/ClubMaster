@@ -674,19 +674,13 @@ async function migrate() {
             }
             const [permAnalisis] = await connection.query("SELECT id_permiso FROM permisos WHERE codigo='can_access_inventory_analytics' LIMIT 1");
             if(permAnalisis.length){
-                const [meseroRolesA] = await connection.query("SELECT id_rol FROM roles WHERE LOWER(nombre) LIKE '%mesero%' OR LOWER(nombre) LIKE '%mesera%'");
-                for(const mr of meseroRolesA){
-                    await connection.query("DELETE FROM rol_permisos WHERE id_rol=? AND id_permiso=?", [mr.id_rol, permAnalisis[0].id_permiso]);
-                }
-                console.log('Permiso can_access_inventory_analytics desactivado por defecto para Mesero.');
+                // No se elimina de roles existentes para no pisar personalizaciones del admin.
+                console.log('Permiso can_access_inventory_analytics no se otorga por defecto a Mesero.');
             }
             const [permCancel] = await connection.query("SELECT id_permiso FROM permisos WHERE codigo='can_cancel_orders' LIMIT 1");
             if(permCancel.length){
-                const [meseroRolesC] = await connection.query("SELECT id_rol FROM roles WHERE LOWER(nombre) LIKE '%mesero%' OR LOWER(nombre) LIKE '%mesera%'");
-                for(const mr of meseroRolesC){
-                    await connection.query("DELETE FROM rol_permisos WHERE id_rol=? AND id_permiso=?", [mr.id_rol, permCancel[0].id_permiso]);
-                }
-                console.log('Permiso can_cancel_orders desactivado por defecto para Mesero (requiere PIN maestro).');
+                // No se elimina de roles existentes para no pisar personalizaciones del admin.
+                console.log('Permiso can_cancel_orders no se otorga por defecto a Mesero (requiere PIN maestro).');
             }
             const [cajeroRoles]=await connection.query("SELECT id_rol FROM roles WHERE LOWER(nombre) LIKE '%cajero%'");
             if(cajeroRoles.length){
@@ -704,12 +698,8 @@ async function migrate() {
                     const [pr]=await connection.query("SELECT id_permiso FROM permisos WHERE codigo=? LIMIT 1",[cod]);
                     if(pr.length) await connection.query("INSERT IGNORE INTO rol_permisos (id_rol,id_permiso) VALUES (?,?)",[barRoles[0].id_rol, pr[0].id_permiso]);
                 }
-                const permsBarOff=['gestionar_inventario','registrar_mermas','ver_caja','cerrar_jornada','cobrar_cuentas','can_cancel_orders'];
-                for(const cod of permsBarOff){
-                    const [pr]=await connection.query("SELECT id_permiso FROM permisos WHERE codigo=? LIMIT 1",[cod]);
-                    if(pr.length) await connection.query("DELETE FROM rol_permisos WHERE id_rol=? AND id_permiso=?",[barRoles[0].id_rol, pr[0].id_permiso]);
-                }
-                console.log('Rol Bartender alineado a Mesero (solo can_create_orders, zona Barra).');
+                // No se eliminan permisos existentes para no pisar personalizaciones del admin.
+                console.log('Rol Bartender: solo can_create_orders se otorga por defecto (zona Barra).');
             }
             const [gerenteRoles]=await connection.query("SELECT id_rol FROM roles WHERE LOWER(nombre) LIKE '%gerente%'");
             if(gerenteRoles.length){
@@ -722,10 +712,7 @@ async function migrate() {
             }
             const [permCobrar]=await connection.query("SELECT id_permiso FROM permisos WHERE codigo='cobrar_cuentas' LIMIT 1");
             if(permCobrar.length){
-                const [meseroRolesCobrar]=await connection.query("SELECT id_rol FROM roles WHERE LOWER(nombre) LIKE '%mesero%' OR LOWER(nombre) LIKE '%mesera%'");
-                for(const mr of meseroRolesCobrar){
-                    await connection.query("DELETE FROM rol_permisos WHERE id_rol=? AND id_permiso=?",[mr.id_rol, permCobrar[0].id_permiso]);
-                }
+                // No se elimina de roles existentes para no pisar personalizaciones del admin.
                 const [cajeroRolesCobrar]=await connection.query("SELECT id_rol FROM roles WHERE LOWER(nombre) LIKE '%cajero%'");
                 for(const cr of cajeroRolesCobrar){
                     await connection.query("INSERT IGNORE INTO rol_permisos (id_rol,id_permiso) VALUES (?,?)",[cr.id_rol, permCobrar[0].id_permiso]);
