@@ -9,6 +9,7 @@ ClubMaster = POS + inventory + finance system for nightclubs/bars. Node 22 + Exp
 - `npm run setup` — migrate + seed (demo roles/users, catalogs; all seed users password `1234`). REFUSES to run if `NODE_ENV=production` or host is not localhost/127.0.0.1 (use `setup:fresh` instead).
 - `npm run setup:fresh` — re-provision a NEW install: migrate, wipe all transactional tables, create only the admin from REQUIRED `ADMIN_EMAIL`/`ADMIN_TEMP_PASSWORD` (>=12 chars, bcrypt like login, never printed; no defaults). DESTRUCTIVE — never run against a client with data.
 - `npm run clean:dupes` — dedupes `zonas`/`unidades_medida`; MUST run before `migrate` can add their UNIQUE indexes (ALTER fails on duplicates).
+- `npm run migrate:pin` — idempotent: hashes any plaintext `pin_maestro` in `configuracion_general` (verification also re-hashes on the fly, so this is the explicit/one-shot path).
 - `npm run seed:*`, `seed:reset`/`clean` (= `cleanData.js`), `fix:admin`, `fix-stock-negativo.js` (zeroes negative stock) — one-off maintenance.
 - PM2: `pm2 start ecosystem.config.js` (fork, 1 instance); PaaS uses `Procfile`.
 
@@ -28,8 +29,11 @@ ClubMaster = POS + inventory + finance system for nightclubs/bars. Node 22 + Exp
 - Services/scripts must import the `pool` proxy from `../config/database` — never `mysql2` directly — or demo mode silently breaks.
 - `productos` price/cost column names vary per install (`precio` vs `precio_venta`, `precio_costo` vs `costo`). Use `Backend/helpers/column-detection.js`; never hardcode those column names.
 - RBAC is nonstandard: admin is BLOCKED from operating the cash register (`soloCajaOperativa`); only mesero role can create orders (`can_create_orders`); meseros can't cancel orders without master PIN. Assumptions live in `middlewares/authMiddleware.js` + migrate's permission seeding.
+- EVERY `/api` route requires a session on GET too (the old middleware exempted all GETs). Public GET whitelist lives in `Backend/server.js` (`RUTAS_API_PUBLICAS_GET`) and holds only `/sesion` and `/2fa/status`; pre-login POSTs are in `RUTAS_API_PUBLICAS`; `/health` + `/api/health` are registered before the middleware. `mesas.html`, `comandero.html` and `kds.html` check `GET /api/sesion` on load and redirect to `/` when anonymous — a screen that renders data from an API needs that guard.
+- `pin_maestro` is stored as bcrypt hash and never leaves the server (`GET /api/configuracion` returns `pin_maestro_configurado` boolean only). Verify/compare/hash through `Backend/services/pin-maestro-service.js`; it also re-hashes legacy plaintext values on successful verification.
 - Audit is append-only by design: `scripts/apply-audit-append-only.js` REVOKEs UPDATE/DELETE on `audit_logs` from the app DB user (needs `DB_ADMIN_USER`/`DB_ADMIN_PASSWORD`). Any new write logic to those tables fails with ERROR 1142 — `tipo_evento` is a fixed ENUM extended in migrate.js, not a free-text column.
-- Auto-backup `services/backup.js` runs mysqldump daily 4 AM into root `backups/` (gitignored) with 7-day retention; needs mysqldump on PATH or `MYSQLDUMP_PATH`.
+- Internal backups (`services/backup.js` daily 4 AM mysqldump, `.enc` nightly in `routes/backup.js`, close-shift backup) are OFF by default everywhere including production — prod backups are exclusively the external `backup-service` (mysqldump -> Backblaze B2; restore via `backup-service/restore.sh`). Enable locally with `BACKUP_INTERNO=true` (dev only). Needs mysqldump on PATH or `MYSQLDUMP_PATH`.
+- `GET /api/backup/ultimo` (admin only) reads the newest object in the B2 bucket through `services/b2-lectura.js` — AWS SigV4 implemented with `node:crypto` (no SDK dependency), using READ-ONLY creds `BACKUP_READ_S3_*` (never `BACKUP_S3_*` write keys; secrets are never logged). The backup modal (`configuracion.js` `cfgModalBackup`) shows that data and the honest "service externo / restore.sh" text — no fake buttons/toasts.
 - Frontend pages are static HTML screens (`Frontend/login.html`, `dashboard.html`, `mesas.html`, `comandero.html`, `kds.html`...), shared JS in `Frontend/js/*`, no build step. `window.API_BASE` (config.js) overrides API origin; empty = same origin.
 - `docs/` holds the Spanish product analysis (modulo-1..3: visión, requerimientos, casos de uso) if you need business context for a feature.
 
@@ -39,6 +43,6 @@ Ad-hoc suites at repo root hit a LIVE server (start it first) and require `Backe
 
 - `node test_seguridad_fallos.js --setup` then `node test_seguridad_fallos.js` then `--cleanup` (creates/removes `chaos_mesero`; asserts RBAC + validation guards).
 - `node test_estres.js --setup` then `node test_estres.js` then `--cleanup` (pool/concurrency; requires an OPEN jornada and free mesas).
-- `node test_reportes_suite.js [BASE_URL]`.
+- `node test_reportes_suite.js [BASE_URL]` (logs in first as `admin@clubmaster.com`/`1234` — override with `TEST_CORREO`/`TEST_PASSWORD` — because GETs require a session).
 
 All three hardcode the absolute project path (`C:\Users\juan esteban\OneDrive\Desktop\ClubMaster\...`) internally — they break if that checkout moves. API responses mix `{success,...}` and auth's `{exito,...}` shapes; echo both when asserting.

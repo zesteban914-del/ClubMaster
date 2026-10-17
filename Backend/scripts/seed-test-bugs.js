@@ -176,9 +176,10 @@ async function seedTestBugs() {
     console.log(`Vales: al dia #${ids.valeAlDia}, vencido #${ids.valeVencido}, liquidado #${ids.valeLiquidado}`);
 
     // ---------- 7. PIN MAESTRO (solo lectura, NO cambiar) ----------
-    const [pinRows] = await conn.query("SELECT clave, valor FROM configuracion_general WHERE clave='pin_maestro' LIMIT 1");
-    ids.pinMaestro = pinRows.length ? pinRows[0].valor : null;
-    console.log('pin_maestro actual:', pinRows.length ? JSON.stringify(pinRows[0]) : '(NO EXISTE FILA)');
+    // Nunca imprimir ni exportar el valor: ni en claro ni como hash.
+    const [pinRows] = await conn.query("SELECT valor FROM configuracion_general WHERE clave='pin_maestro' LIMIT 1");
+    ids.pinMaestroConfigurado = !!(pinRows.length && String(pinRows[0].valor || '').trim());
+    console.log('pin_maestro:', ids.pinMaestroConfigurado ? 'configurado (valor no mostrado)' : '(sin configurar)');
 
     console.log('=== SEED TEST-BUGS OK ===');
     console.log(JSON.stringify(ids, null, 2));

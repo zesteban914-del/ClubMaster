@@ -1,7 +1,10 @@
 /* Suite Inteligencia de Negocios - 25 reportes + 1 export (100% OK)
 Usa http nativo en lugar de fetch para evitar problemas de TLS/undici en Node 22.
+Los GET de /api exigen sesion: primero se inicia sesion y luego se reenvia la cookie.
 Uso: node test_reportes_suite.js [BASE_URL] */
 const BASE = (process.argv[2] || process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+const CORREO = process.env.TEST_CORREO || 'admin@clubmaster.com';
+const PASSWORD = process.env.TEST_PASSWORD || '1234';
 const FI = '2026-08-12', FF = '2026-09-11';
 const PLAN = [
   ['ticket','reimprimir','especial-factura'],['ticket','ticket_resumido'],['ticket','ticket_empleado'],
@@ -12,11 +15,15 @@ const PLAN = [
   ['auditoria','aud_cajon'],['auditoria','aud_eliminadas'],['auditoria','aud_horario'],
   ['contable','cont_facturas'],['contable','cont_impuestos'],['contable','cont_gastos'],['contable','cont_stock'],
 ];
+const SESION = { cookie: '' };
 function httpGet(path){
   return new Promise((resolve,reject)=>{
     const http = require('http');
     const url = BASE + path;
-    http.get(url, (res)=>{
+    const opts = require('url').parse(url);
+    opts.method = 'GET';
+    opts.headers = SESION.cookie ? { Cookie: SESION.cookie } : {};
+    const req = http.request(opts, (res)=>{
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', ()=>{
@@ -24,7 +31,9 @@ function httpGet(path){
         try { j = JSON.parse(data); } catch { j = { _raw: data.slice(0,120) }; }
         resolve({ status: res.statusCode, headers: res.headers, j, ms: Date.now() - globalThis._t0, err: '' });
       });
-    }).on('error', e => reject({ err: 'http error: ' + e.message }));
+    });
+    req.on('error', e => reject({ err: 'http error: ' + e.message }));
+    req.end();
   });
 }
 async function httpPost(path, body){
@@ -42,8 +51,34 @@ async function httpPost(path, body){
 /* medir tiempos con performance.now() polyfill */
 globalThis.performance = globalThis.performance || { now:()=>Date.now() };
 /* we will measure manually: record _t0 before each request via global */
+function httpLogin(){
+  return new Promise((resolve,reject)=>{
+    const http = require('http');
+    const data = JSON.stringify({ correo: CORREO, contrasena: PASSWORD });
+    const u = new URL(BASE);
+    const opts = { hostname: u.hostname, port: u.port || 3000, path: u.pathname.replace(/\/$/,'') + '/api/auth/login', method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } };
+    const req = http.request(opts, (res)=>{
+      let d=''; res.on('data', c=>d+=c);
+      res.on('end', ()=>{
+        const sc = res.headers['set-cookie'] || [];
+        if (sc.length) SESION.cookie = sc.map(c=>c.split(';')[0]).join('; ');
+        let j=null; try{ j=JSON.parse(d); }catch(e){}
+        resolve({ ok: res.statusCode===200 && !!(j && (j.exito || j.success)), status: res.statusCode, j });
+      });
+    });
+    req.on('error', e=>reject(e));
+    req.write(data); req.end();
+  });
+}
 (async () => {
   console.log('BASE=' + BASE + ' rango=' + FI + '..' + FF);
+  const lg = await httpLogin();
+  if (!lg.ok) {
+    console.error('Login fallido (HTTP ' + lg.status + ') con ' + CORREO + ': los GET de /api exigen sesion, no se puede continuar.');
+    process.exit(1);
+  }
+  console.log('sesion iniciada como ' + CORREO);
   // health
   const h = await httpGet('/health');
   console.log('health:', h.status, h.ms + 'ms');
@@ -82,7 +117,7 @@ globalThis.performance = globalThis.performance || { now:()=>Date.now() };
   // Export CSV usando http GET y analizando bytes para BOM
   const http = require('http');
   const tE_start = Date.now();
-  const exportReq = http.get(BASE + '/api/reportes/export?tipo=general&fecha_inicio=' + FI + '&fecha_fin=' + FF, (e)=>{
+  const exportReq = http.get(BASE + '/api/reportes/export?tipo=general&fecha_inicio=' + FI + '&fecha_fin=' + FF, { headers: SESION.cookie ? { Cookie: SESION.cookie } : {} }, (e)=>{
     let buf = '';
     e.on('data', chunk => buf += chunk);
     e.on('end', ()=>{

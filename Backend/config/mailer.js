@@ -87,7 +87,7 @@ async function enviarReporteCierre(destinatario, reporte){
                 </div>
                 <div style="font-size:11px;color:#64748B;display:flex;justify-content:space-between"><span>Apertura: ${j.usuario_apertura||'--'}</span><span>Cierre: ${j.usuario_cierre||'--'}</span></div>
                 <div style="margin-top:16px;text-align:center"><a href="${(process.env.APP_URL||'http://localhost:3000').replace(/\/+$/, '')}/api/jornada/${j.id_jornada}/reporte" style="background:#F59E0B;color:#1a1a2e;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:12px">Ver reporte completo</a></div>
-                <div style="margin-top:12px;font-size:10px;color:#94A3B8;text-align:center">Backup automático generado al cierre en /backups/cierre-${j.id_jornada||''}-*.sql</div>
+                <div style="margin-top:12px;font-size:10px;color:#94A3B8;text-align:center">Respaldo diario gestionado por el servicio externo (Backblaze)</div>
             </div>
         </div>`;
     const text = `Cierre #${j.id_jornada} ${j.barra_asignada} - Ventas brutas ${ventasBrutas} - Netas ${formatearCOP(r.ventas_netas)} - Esperado ${formatearCOP(r.esperado)} - Conteo ${formatearCOP(r.total_en_caja)} - Diferencia ${formatearCOP(diff)} [${diffLabel}]`;
