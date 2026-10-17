@@ -13,7 +13,7 @@ No modifica el backend de ClubMaster ni su Dockerfile.
 1. Lee credenciales MySQL y B2 **solo de variables de entorno** (nada hardcodeado).
 2. `mysqldump --single-transaction --routines --triggers --events --set-gtid-purged=OFF --hex-blob` (compatible MySQL 9, imagen base `mysql:9`).
 3. Comprime con `gzip` → `/tmp/clubmaster-AAAA-MM-DD-HHMM.sql.gz` (fecha/hora **UTC**).
-4. **Antes de subir** verifica: archivo no vacío, tamaño ≥ `MIN_DUMP_BYTES` (default 10 KB) y gzip válido. Si falla, aborta con error y no sube nada.
+4. **Antes de subir** verifica: archivo no vacío, tamaño ≥ `MIN_DUMP_BYTES` (default 10 KB), gzip válido y **volcado completo**: pie `-- Dump completed`, ≥1 `CREATE TABLE` y ≥1 `INSERT INTO`. Si falta algo, aborta con error y no sube nada.
 5. Sube a `s3://<bucket>/<prefijo>clubmaster-AAAA-MM-DD-HHMM.sql.gz`.
 6. **Después de subir** hace `HeadObject` y confirma que el objeto existe y que el tamaño remoto == tamaño local. Si no coincide, falla.
 7. **Retención**: conserva las últimas **7 diarias** + **4 semanales** (la más reciente de cada semana ISO fuera de la ventana diaria) y **borra las demás**. Cada borrado se verifica con `HeadObject` (debe dar 404 después del delete).
@@ -146,8 +146,8 @@ gunzip -c ./copia.sql.gz | mysql -h <host-destino> -P 3306 -u <usuario> clubmast
 
 ```
 backup-service/
-├── Dockerfile        # FROM mysql:9 + python3/boto3, CMD de una sola ejecución
-├── backup.py         # dump → gzip → validación → subida → verificación → retención
+├── Dockerfile        # FROM mysql:9 + Python 3.11/boto3, CMD de una sola ejecución
+├── backup.py         # dump → gzip → validación (tamaño + completitud) → subida → verificación → retención
 ├── requirements.txt  # boto3 (API S3 de B2)
 ├── restore.sh        # descarga desde B2 y restaura en base nueva (pruebas)
 ├── .env.example      # PLANTILLA con valores falsos (lo real va en Railway, no en git)

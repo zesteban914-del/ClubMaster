@@ -2,10 +2,19 @@ module.exports=function(app, db){
  const pool=db.pool||require('../config/database').pool;
  const { poolReal, isDemoActive } = require('../config/database');
  const { backupLimiter } = require('../middlewares/rateLimiter');
+ const { requiereAutenticacion, soloAdmin } = require('../middlewares/authMiddleware');
+ const { respaldosInternosActivos } = require('../config/backups-internos');
+ const b2Lectura = require('../services/b2-lectura');
  const fs=require('fs'); const path=require('path'); const crypto=require('crypto'); const { spawn } = require('child_process');
  const BACKUP_DIR=path.join(__dirname,'../backups');
  try{ if(!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR,{recursive:true}); }catch(e){}
- async function generarBackupCierre(id_jornada){
+  async function generarBackupCierre(id_jornada){
+   // Backups internos apagados por defecto (tambien en produccion): el
+   // respaldo de produccion es backup-service -> Backblaze B2.
+   if(!respaldosInternosActivos()){
+     console.log(`Backup cierre #${id_jornada} omitido: backups internos apagados (BACKUP_INTERNO=true en desarrollo para activarlos).`);
+     return {success:false, omitido:true};
+   }
    const usePool = isDemoActive() ? require('../config/database').poolDemo : poolReal;
    const fecha=new Date().toISOString().replace(/[:.]/g,'-');
    const fileBase=`cierre-${id_jornada||'X'}-${fecha}`;
@@ -62,19 +71,23 @@ module.exports=function(app, db){
   const tag=cipher.getAuthTag();
   return Buffer.concat([iv, tag, enc]).toString('base64');
  }
- setInterval(async()=>{
-  try{
-   const [pedidos]=await pool.query('SELECT * FROM pedidos ORDER BY id_pedido DESC LIMIT 1000');
-   const data=JSON.stringify({fecha:new Date().toISOString(), pedidos});
-   const key=process.env.SESSION_SECRET||'clubmaster-key';
-   const enc=encrypt(data, key);
-   const file=path.join(BACKUP_DIR, 'auto-'+new Date().toISOString().slice(0,10)+'.enc');
-   fs.writeFileSync(file, enc);
-   const files=fs.readdirSync(BACKUP_DIR).sort().reverse();
-   files.slice(7).forEach(f=>{ try{ fs.unlinkSync(path.join(BACKUP_DIR,f)); }catch(e){} });
-  }catch(e){ console.error('backup auto',e.message); }
- }, 24*60*60*1000);
- app.get('/api/backup/export', backupLimiter, async(req,res)=>{
+  // Volcado .enc cada 24 h: apagado por defecto (tambien en produccion);
+  // en desarrollo se activa con BACKUP_INTERNO=true.
+  if(respaldosInternosActivos()){
+  setInterval(async()=>{
+   try{
+    const [pedidos]=await pool.query('SELECT * FROM pedidos ORDER BY id_pedido DESC LIMIT 1000');
+    const data=JSON.stringify({fecha:new Date().toISOString(), pedidos});
+    const key=process.env.SESSION_SECRET||'clubmaster-key';
+    const enc=encrypt(data, key);
+    const file=path.join(BACKUP_DIR, 'auto-'+new Date().toISOString().slice(0,10)+'.enc');
+    fs.writeFileSync(file, enc);
+    const files=fs.readdirSync(BACKUP_DIR).sort().reverse();
+    files.slice(7).forEach(f=>{ try{ fs.unlinkSync(path.join(BACKUP_DIR,f)); }catch(e){} });
+   }catch(e){ console.error('backup auto',e.message); }
+  }, 24*60*60*1000);
+  }
+ app.get('/api/backup/export', requiereAutenticacion, backupLimiter, async(req,res)=>{
   try{
    const [pedidos]=await pool.query('SELECT * FROM pedidos ORDER BY id_pedido DESC LIMIT 500');
    const [detalles]=await pool.query('SELECT * FROM detalle_pedido LIMIT 1000');
@@ -86,17 +99,27 @@ module.exports=function(app, db){
    res.send(JSON.stringify(data,null,2));
   }catch(e){ res.status(500).json({success:false,mensaje:e.message}); }
  });
- app.get('/api/auditoria/reciente', async(req,res)=>{
+ app.get('/api/auditoria/reciente', requiereAutenticacion, async(req,res)=>{
   try{
    const [logs]=await pool.query('SELECT a.*, COALESCE(u.nombre,"Sistema") as usuario FROM audit_logs a LEFT JOIN usuarios u ON a.usuario_id=u.id_usuario ORDER BY a.created_at DESC LIMIT 50');
    res.json({success:true, logs});
   }catch(e){ res.json({success:true, logs:[]}); }
  });
- app.get('/api/reportes/health', async(req,res)=>{
+ // Requiere sesion: expone metricas agregadas (pedidos, stock) del negocio.
+ app.get('/api/reportes/health', requiereAutenticacion, async(req,res)=>{
   try{
    const [p]=await pool.query("SELECT COUNT(*) as total, SUM(CASE WHEN estado='Pagado' THEN 1 ELSE 0 END) as pagados, SUM(CASE WHEN estado='Pendiente' THEN 1 ELSE 0 END) as pendientes FROM pedidos");
    const [s]=await pool.query('SELECT COUNT(*) as productos, SUM(CASE WHEN stock<=stock_minimo AND stock_minimo>0 THEN 1 ELSE 0 END) as bajo FROM productos WHERE activo=1');
    res.json({success:true, pedidos:p[0], stock:s[0]});
   }catch(e){ res.status(500).json({success:false,mensaje:e.message}); }
+ });
+ // Ultimo respaldo en Backblaze B2 (solo administrador). Usa credenciales
+ // de SOLO LECTURA (BACKUP_READ_S3_*); nunca las de escritura y nunca se
+ // registran en logs. Si no estan configuradas responde configurado:false.
+ app.get('/api/backup/ultimo', requiereAutenticacion, soloAdmin, backupLimiter, async(req,res)=>{
+  try{
+   const r = await b2Lectura.obtenerUltimoRespaldo();
+   res.json({ success:true, configurado:r.configurado, ultimo:r.ultimo||null, motivo:r.motivo });
+  }catch(e){ res.status(e.statusCode||502).json({ success:false, mensaje:e.message }); }
  });
 };

@@ -115,6 +115,7 @@ def run_mysqldump(host, port, user, password, database, dest_gz_path):
         # seguridad reemplazamos cualquier coincidencia accidental.
         err = err.replace(password, "***")
         fail(f"mysqldump terminó con código {proc.returncode}. Detalle: {err or 'sin detalle'}")
+    log("mysqldump terminó OK (código 0).")
 
 
 def verify_local_file(path, min_bytes):
@@ -136,6 +137,42 @@ def verify_local_file(path, min_bytes):
     except OSError as e:
         fail(f"el archivo no es un gzip válido: {e}. No se sube nada.")
     return size
+
+
+def verify_dump_content(path):
+    """Verifica que el volcado esté COMPLETO antes de subirlo:
+    - mysqldump con código 0 (ya validado en run_mysqldump)
+    - línea final '-- Dump completed' (pie de un volcado completo)
+    - al menos un 'CREATE TABLE' (contiene tablas)
+    - al menos un 'INSERT INTO' (contiene datos)
+    Cualquier fallo termina el proceso con error y NO se sube nada."""
+    n_tables = 0
+    n_inserts = 0
+    last_line = b""
+    try:
+        with gzip.open(path, "rb") as f:
+            for line in f:
+                if line.startswith(b"CREATE TABLE"):
+                    n_tables += 1
+                elif line.startswith(b"INSERT INTO"):
+                    n_inserts += 1
+                stripped = line.strip()
+                if stripped:
+                    last_line = stripped
+    except (OSError, EOFError) as e:
+        fail(f"el volcado está dañado o truncado al descomprimirlo: {e}. No se sube nada.")
+    if n_tables == 0:
+        fail("el volcado NO contiene ninguna sentencia 'CREATE TABLE' "
+             "(dump incompleto o base equivocada). No se sube nada.")
+    if n_inserts == 0:
+        fail("el volcado NO contiene ninguna sentencia 'INSERT INTO' "
+             "(dump sin datos o incompleto). No se sube nada.")
+    if not last_line.startswith(b"-- Dump completed"):
+        tail = last_line[:80].decode("utf-8", "replace")
+        fail(f"el volcado NO termina correctamente: falta la línea final "
+             f"'-- Dump completed' (última línea: '{tail}'). Dump truncado. No se sube nada.")
+    log(f"volcado íntegro: {n_tables} tablas (CREATE TABLE), {n_inserts} sentencias "
+        f"INSERT, pie '-- Dump completed' presente.")
 
 
 def upload_and_verify(s3, bucket, local_path, key):
@@ -287,6 +324,7 @@ def main():
     try:
         run_mysqldump(host, port, user, password, database, local_path)
         verify_local_file(local_path, min_bytes)
+        verify_dump_content(local_path)
         upload_and_verify(s3, bucket, local_path, key)
         apply_retention(s3, bucket, prefix, daily, weekly)
     finally:
