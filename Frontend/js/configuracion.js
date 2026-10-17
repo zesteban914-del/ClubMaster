@@ -1,4 +1,4 @@
-var cfgPanel = { general:{}, unidades:[], conversiones:[], zonas:[], notas:[], categorias:[], productos:[], usuario:{}, esAdmin:false };
+﻿var cfgPanel = { general:{}, unidades:[], conversiones:[], zonas:[], notas:[], categorias:[], productos:[], usuario:{}, esAdmin:false };
 
 function cfgEsc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function cfgNum(v){var n=Number(v);return isFinite(n)?n:0;}
@@ -102,7 +102,7 @@ function cfgRenderSections(){
       {id:'permisos',icon:'bi-people',title:'Permisos por Rol',desc:'Administrador, Cajero, Bartender, Mesero, Cover.',badge:cfgPanel.general.permisos_version?'v2':null}
     ],'c4')
     + cfgSection('mantenimiento','MANTENIMIENTO Y UTILITIES','Respaldos y auditor\u00eda','s5','bi-tools',[
-      {id:'backup',icon:'bi-cloud-arrow-up',title:'Copias de Seguridad',desc:'Respaldos autom\u00e1ticos post-jornada en la nube/local.',badge:cfgPanel.general.backup_auto==='1'?'Auto ON':'Manual'},
+      {id:'backup',icon:'bi-cloud-arrow-up',title:'Copias de Seguridad',desc:'Servicio externo en Backblaze; restauraci\u00f3n por procedimiento documentado.',badge:'Externo'},
       {id:'logs',icon:'bi-database',title:'Mantenimiento y Logs',desc:'Auditor\u00eda de acciones e importaci\u00f3n/exportaci\u00f3n de licores.',badge:null}
     ],'c5');
 }
@@ -183,6 +183,7 @@ function cfgModalEstablecimiento(){
     +'<div class="cfg-field"><label class="cfg-label">Logo URL</label><input class="cfg-input" id="cfgEstLogo" value="'+cfgEsc(g.logo_url||'')+'" placeholder="https://.../logo.png"></div>'
     +'<div class="cfg-field"><label class="cfg-label">Mensaje pie de factura</label><textarea class="cfg-textarea" id="cfgEstPie" placeholder="Gracias por su visita...">'+cfgEsc(g.pie_factura||'')+'</textarea></div>',
     '<button class="cfg-btn cfg-btn-ghost" onclick="cfgModalClose()">Cancelar</button><button class="cfg-btn cfg-btn-primary" onclick="cfgGuardarEstablecimiento()"><i class="bi bi-check-lg"></i> Guardar</button>');
+  cfgCargarAuditReciente();
 }
 function cfgGuardarEstablecimiento(){
   var p={nombre_local:document.getElementById('cfgEstNombre').value.trim(),nit_local:document.getElementById('cfgEstNit').value.trim(),direccion_local:document.getElementById('cfgEstDir').value.trim(),telefono_local:document.getElementById('cfgEstTel').value.trim(),licencia:document.getElementById('cfgEstLic').value.trim(),logo_url:document.getElementById('cfgEstLogo').value.trim(),pie_factura:document.getElementById('cfgEstPie').value.trim()};
@@ -389,11 +390,7 @@ function cfgModalTerminal(){
   cfgModalWrap('bi-brightness-high','linear-gradient(135deg,#F59E0B,#FBBF24)','Ajustes de Terminal Nocturno',
     '<div class="cfg-field"><label class="cfg-label">Tama\u00f1o de texto: <span id="cfgTermFontVal" style="color:#F8FAFC">'+font+'px</span></label><input class="cfg-range" type="range" min="12" max="24" step="1" id="cfgTermFont" value="'+font+'" oninput="document.getElementById(\'cfgTermFontVal\').textContent=this.value+\'px\';document.getElementById(\'cfgTermPreview\').style.fontSize=this.value+\'px\'"></div>'
     +'<div class="cfg-field"><label class="cfg-label">Contraste</label><select class="cfg-select" id="cfgTermContraste" onchange="cfgActualizarPreview()"><option value="normal"'+(contraste==='normal'?' selected':'')+'>Normal</option><option value="alto"'+(contraste==='alto'?' selected':'')+'>Alto (recomendado noche)</option><option value="max"'+(contraste==='max'?' selected':'')+'>M\u00e1ximo</option></select></div>'
-    +'<div style="background:#0F172A;border:2px solid #1E293B;border-radius:14px;padding:20px;margin-top:16px" id="cfgTermPreviewWrap"><div style="font-size:.7rem;font-weight:700;color:#5F6780;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Vista previa terminal</div><div id="cfgTermPreview" style="background:#1A1D24;border:1px solid #2A3040;border-radius:10px;padding:16px;color:#F8FAFC;font-size:'+font+'px;line-height:1.6"><div style="display:flex;justify-content:space-between;font-weight:800"><span>Mesa 12 \u2022 VIP</span><span style="color:#34D399">$86.000</span></div><div style="color:#8B92A8;font-size:.85em">2x Aguardiente \u2022 1x Cerveza</div><button style="margin-top:12px;background:#3B82F6;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;width:100%">COBRAR</button></div></div>',
-    '<button class="cfg-btn cfg-btn-ghost" onclick="cfgModalClose()">Cancelar</button><button class="cfg-btn cfg-btn-primary" onclick="cfgGuardarTerminal()"><i class="bi bi-check-lg"></i> Guardar</button>');
-}
-function cfgActualizarPreview(){
-  var c=document.getElementById('cfgTermContraste').value; var w=document.getElementById('cfgTermPreviewWrap');
+    +'<div id="cfgAuditReciente" style="padding:8px 16px;font-size:.78rem;color:#8B92A8">Cargando auditor\u00eda\u2026</div>'
   if(!w) return;
   if(c==='max'){ w.style.background='#000'; w.style.borderColor='#334155'; }
   else if(c==='alto'){ w.style.background='#0F172A'; w.style.borderColor='#1E293B'; }
@@ -493,21 +490,38 @@ function cfgToggleRol(id){ cfgAbrirPermisosRol(Number(id)||id); }
 function cfgGuardarPermisos(){ cfgToast('info','Usa "Permisos" en cada rol para guardar'); }
 
 function cfgModalBackup(){
-  var g=cfgPanel.general;
-  var auto=g.backup_auto==='1';
   cfgModalWrap('bi-cloud-arrow-up','linear-gradient(135deg,#06B6D4,#3B82F6)','Copias de Seguridad',
-    '<div class="cfg-field"><label class="cfg-label">Respaldos autom\u00e1ticos post-jornada</label><div style="display:flex;align-items:center;gap:12px;margin-top:6px"><label class="cfg-switch"><input type="checkbox" id="cfgBackupAuto" '+(auto?'checked':'')+'><span class="cfg-switch-slider"></span></label><span style="font-size:.82rem;color:#8B92A8">'+(auto?'Activado \u2014 se ejecuta al cerrar jornada':'Desactivado')+'</span></div></div>'
-    +'<div class="cfg-row"><div class="cfg-field"><label class="cfg-label">Hora de respaldo (si auto)</label><input class="cfg-input" type="time" id="cfgBackupHora" value="'+cfgEsc(g.backup_hora||'06:30')+'"></div><div class="cfg-field"><label class="cfg-label">Destino</label><select class="cfg-select" id="cfgBackupDestino"><option value="local"'+((g.backup_destino||'local')==='local'?' selected':'')+'>Local</option><option value="nube"'+(g.backup_destino==='nube'?' selected':'')+'>Nube</option><option value="ambos"'+(g.backup_destino==='ambos'?' selected':'')+'>Ambos</option></select></div></div>'
-    +'<div style="background:#1E222E;border:1px solid #2A3040;border-radius:10px;padding:14px;margin-top:12px"><div style="font-weight:700;color:#E8EAF0;font-size:.82rem;margin-bottom:8px"><i class="bi bi-clock-history"></i> \u00daltimo respaldo</div><div style="font-size:.78rem;color:#8B92A8">No hay respaldos registrados. Ejecuta uno manual para verificar.</div><div style="display:flex;gap:8px;margin-top:12px"><button class="cfg-btn cfg-btn-ghost" onclick="cfgEjecutarBackup()"><i class="bi bi-download"></i> Respaldar ahora</button><button class="cfg-btn cfg-btn-ghost" onclick="cfgToast(\'info\',\'Restaurar desde archivo...\')"><i class="bi bi-upload"></i> Restaurar</button></div></div>',
-    '<button class="cfg-btn cfg-btn-ghost" onclick="cfgModalClose()">Cancelar</button><button class="cfg-btn cfg-btn-primary" onclick="cfgGuardarBackup()"><i class="bi bi-check-lg"></i> Guardar</button>');
+    '<div style="background:#1E222E;border:1px solid #2A3040;border-radius:10px;padding:14px">'
+    +'<div style="font-weight:700;color:#E8EAF0;font-size:.84rem;margin-bottom:6px"><i class="bi bi-cloud-check"></i> C\u00f3mo funcionan los respaldos</div>'
+    +'<div style="font-size:.78rem;color:#8B92A8;line-height:1.55">Los respaldos los gestiona un servicio externo y se guardan en Backblaze. La restauraci\u00f3n se hace con el procedimiento documentado (backup-service/restore.sh).</div>'
+    +'</div>'
+    +'<div style="background:#1E222E;border:1px solid #2A3040;border-radius:10px;padding:14px;margin-top:12px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px"><div style="font-weight:700;color:#E8EAF0;font-size:.82rem"><i class="bi bi-clock-history"></i> \u00daltimo respaldo</div>'
+    +'<button class="cfg-btn cfg-btn-ghost" style="padding:4px 10px;font-size:.72rem" onclick="cfgCargarUltimoRespaldo()"><i class="bi bi-arrow-clockwise"></i> Actualizar</button></div>'
+    +'<div id="cfgBackupUltimo" style="font-size:.78rem;color:#8B92A8">Consultando Backblaze\u2026</div>'
+    +'</div>',
+    '<button class="cfg-btn cfg-btn-ghost" onclick="cfgModalClose()">Cerrar</button>');
+  cfgCargarUltimoRespaldo();
 }
-function cfgGuardarBackup(){
-  var p={backup_auto:document.getElementById('cfgBackupAuto').checked?'1':'0',backup_hora:document.getElementById('cfgBackupHora').value||'06:30',backup_destino:document.getElementById('cfgBackupDestino').value};
-  cfgSave(p,'Configuraci\u00f3n de respaldos guardada').then(function(ok){ if(ok) cfgModalClose(); });
-}
-function cfgEjecutarBackup(){
-  cfgToast('info','Generando respaldo...');
-  setTimeout(function(){ cfgToast('success','Respaldo completado: backup_2026-05-13.sql (2.4 MB)'); },1200);
+// GET /api/backup/ultimo (solo administrador): nombre, fecha y tamano del
+// ultimo respaldo en Backblaze. Sin datos reales no se muestra nada.
+function cfgCargarUltimoRespaldo(){
+  var d=document.getElementById('cfgBackupUltimo'); if(!d) return;
+  d.textContent='Consultando Backblaze\u2026';
+  fetch(API_BASE+'/api/backup/ultimo',{credentials:'include'}).then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {status:r.status,j:j}; }); }).then(function(w){
+    var el=document.getElementById('cfgBackupUltimo'); if(!el) return;
+    var j=w.j||{};
+    if(w.status!==200){ el.innerHTML='<span style="color:#F87171">'+cfgEsc(j.mensaje||('No se pudo consultar (HTTP '+w.status+')'))+'</span>'; return; }
+    if(j.configurado===false){ el.innerHTML='<span style="color:#F59E0B">Consulta no configurada en el servidor: '+cfgEsc(j.motivo||'faltan BACKUP_READ_S3_*')+'</span>'; return; }
+    if(!j.ultimo){ el.innerHTML='A\u00fan no hay respaldos en Backblaze.'; return; }
+    var f='';
+    try{ f=j.ultimo.fecha?new Date(j.ultimo.fecha).toLocaleString('es-CO'):'Fecha no disponible'; }catch(e){ f=String(j.ultimo.fecha||'Fecha no disponible'); }
+    el.innerHTML='<div style="color:#E8EAF0;font-weight:600;word-break:break-all">'+cfgEsc(j.ultimo.nombre)+'</div>'
+      +'<div style="margin-top:4px">'+cfgEsc(f)+' &bull; '+cfgEsc(j.ultimo.tamano_legible||'Tama\u00f1o no disponible')+'</div>';
+  }).catch(function(){
+    var el=document.getElementById('cfgBackupUltimo'); if(!el) return;
+    el.innerHTML='<span style="color:#F87171">No se pudo conectar con el servidor.</span>';
+  });
 }
 
 function cfgModalLogs(){
@@ -515,14 +529,11 @@ function cfgModalLogs(){
   cfgModalWrap('bi-database','linear-gradient(135deg,#10B981,#06B6D4)','Mantenimiento y Logs',
     '<div class="cfg-row"><div class="cfg-field"><label class="cfg-label">Retenci\u00f3n de logs (d\u00edas)</label><input class="cfg-input" type="number" id="cfgLogDias" value="'+cfgEsc(g.logs_retencion||'90')+'"></div><div class="cfg-field"><label class="cfg-label">Auditor\u00eda</label><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><label class="cfg-switch"><input type="checkbox" id="cfgLogAudit" '+(g.logs_auditoria!=='0'?'checked':'')+'><span class="cfg-switch-slider"></span></label><span style="font-size:.82rem;color:#8B92A8">Registrar acciones</span></div></div></div>'
     +'<div style="border:1px solid #2A3040;border-radius:12px;overflow:hidden;margin-top:12px"><div style="padding:12px 16px;background:#1E222E;border-bottom:1px solid #2A3040;font-weight:700;color:#E8EAF0;font-size:.82rem;display:flex;align-items:center;justify-content:space-between"><span><i class="bi bi-activity"></i> Auditor\u00eda reciente</span><span style="font-size:.7rem;color:#5F6780">\u00daltimas 5 acciones</span></div>'
-    +'<div style="padding:8px 16px">'
-    +'<div class="cfg-log-item"><span class="cfg-log-dot" style="background:#3B82F6"></span><div style="flex:1"><div style="color:#E8EAF0">Ajuste de precio masivo</div><div style="color:#5F6780;font-size:.75rem">Admin \u2022 hace 2h \u2022 +10% en Cervezas</div></div></div>'
-    +'<div class="cfg-log-item"><span class="cfg-log-dot" style="background:#10B981"></span><div style="flex:1"><div style="color:#E8EAF0">Cierre de jornada #42</div><div style="color:#5F6780;font-size:.75rem">Cajero \u2022 ayer 06:12 AM \u2022 $1.240.000</div></div></div>'
-    +'<div class="cfg-log-item"><span class="cfg-log-dot" style="background:#F59E0B"></span><div style="flex:1"><div style="color:#E8EAF0">Merma registrada</div><div style="color:#5F6780;font-size:.75rem">Bartender \u2022 hace 1 d\u00eda \u2022 Botella rota</div></div></div>'
-    +'</div></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px"><button class="cfg-btn cfg-btn-ghost" style="justify-content:center" onclick="cfgExportarLicores()"><i class="bi bi-box-arrow-up"></i> Exportar licores (CSV)</button><button class="cfg-btn cfg-btn-ghost" style="justify-content:center" onclick="cfgImportarLicores()"><i class="bi bi-box-arrow-in-down"></i> Importar licores</button></div>'
+    +'<div id="cfgAuditReciente" style="padding:8px 16px;font-size:.78rem;color:#8B92A8">Cargando auditor\u00eda\u2026</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px"><button class="cfg-btn cfg-btn-ghost" style="justify-content:center" onclick="cfgExportarLicores()"><i class="bi bi-box-arrow-up"></i> Exportar licores (CSV)</button><button class="cfg-btn cfg-btn-ghost" style="justify-content:center;opacity:.45;cursor:not-allowed" title="La importaci\u00f3n de licores no est\u00e1 disponible aqu\u00ed. Usa la secci\u00f3n Inventario."><i class="bi bi-box-arrow-in-down"></i> Importar licores</button></div>'
     +'<div style="display:flex;gap:8px;margin-top:12px"><button class="cfg-btn cfg-btn-danger" style="flex:1;justify-content:center" onclick="cfgLimpiarLogs()"><i class="bi bi-trash"></i> Limpiar logs antiguos</button></div>',
     '<button class="cfg-btn cfg-btn-ghost" onclick="cfgModalClose()">Cerrar</button><button class="cfg-btn cfg-btn-primary" onclick="cfgGuardarLogs()"><i class="bi bi-check-lg"></i> Guardar</button>');
+  cfgCargarAuditReciente();
 }
 function cfgGuardarLogs(){
   var p={logs_retencion:String(document.getElementById('cfgLogDias').value||'90'),logs_auditoria:document.getElementById('cfgLogAudit').checked?'1':'0'};
@@ -534,8 +545,30 @@ function cfgExportarLicores(){
   var blob=new Blob([csv],{type:'text/csv'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='licores_clubmaster.csv'; a.click(); cfgToast('success','CSV exportado');
 }
 function cfgImportarLicores(){
-  var inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,.xlsx';
-  inp.onchange=function(){ if(inp.files[0]) cfgToast('info','Importando '+inp.files[0].name+'...'); setTimeout(function(){cfgToast('success','Importaci\u00f3n completada (simulado)');},1000); };
-  inp.click();
+  cfgToast('info','Importaci\u00f3n no disponible desde aqui. Usa la secci\u00f3n Inventario para agregar o editar productos.');
+}
+// Carga las ultimas 5 acciones de auditoria desde GET /api/auditoria/reciente (requiere sesion).
+function cfgCargarAuditReciente(){
+  var el=document.getElementById('cfgAuditReciente'); if(!el) return;
+  fetch(API_BASE+'/api/auditoria/reciente',{credentials:'include'})
+    .then(function(r){ return r.json().catch(function(){return {};}) })
+    .then(function(d){
+      var el2=document.getElementById('cfgAuditReciente'); if(!el2) return;
+      if(!d.success||!Array.isArray(d.logs)||!d.logs.length){
+        el2.innerHTML='<span style="color:#5F6780">Sin registros de auditor\u00eda disponibles.</span>';
+        return;
+      }
+      var h=''; var colores=['#3B82F6','#10B981','#F59E0B','#8B5CF6','#EF4444'];
+      d.logs.slice(0,5).forEach(function(log,i){
+        var ts=''; try{ ts=new Date(log.created_at).toLocaleString('es-CO'); }catch(e){ ts=String(log.created_at||''); }
+        h+='<div class="cfg-log-item"><span class="cfg-log-dot" style="background:'+colores[i%colores.length]+'"></span>'
+          +'<div style="flex:1"><div style="color:#E8EAF0;word-break:break-word">'+cfgEsc(log.tipo_evento||'Evento')+'</div>'
+          +'<div style="color:#5F6780;font-size:.75rem">'+cfgEsc(log.usuario||'Sistema')+' &bull; '+cfgEsc(ts)+'</div></div></div>';
+      });
+      el2.innerHTML='<div style="padding:4px 16px 8px">'+h+'</div>';
+    }).catch(function(){
+      var el3=document.getElementById('cfgAuditReciente'); if(!el3) return;
+      el3.innerHTML='<span style="color:#F87171">No se pudo cargar la auditor\u00eda.</span>';
+    });
 }
 function cfgLimpiarLogs(){ if(!confirm('Eliminar logs con m\u00e1s de '+(document.getElementById('cfgLogDias').value||90)+' d\u00edas?')) return; cfgToast('success','Logs antiguos eliminados'); }
