@@ -2,6 +2,7 @@ module.exports = function(app, db, security, mailer, authMiddleware) {
     const { middlewareRateLimitLogin, registrarIntentoFallido, registrarIntentoExitoso } = authMiddleware;
     const { loginLimiter, recuperarLimiter, pinLimiter } = require('../middlewares/rateLimiter');
     const audit = require('../services/audit-service');
+    const pinMaestroService = require('../services/pin-maestro-service');
     async function handleLogin(req,res){
         const { correo, contrasena } = req.body;
         if (!correo || !contrasena) return res.status(400).json({ exito: false, mensaje: 'Correo y contrasena son obligatorios' });
@@ -39,10 +40,11 @@ module.exports = function(app, db, security, mailer, authMiddleware) {
             if(id_usuario){ const [rows]=await db.pool.query('SELECT id_usuario, contrasena, nombre, correo, activo FROM usuarios WHERE id_usuario=?',[id_usuario]); if(rows.length) usuario=rows[0]; }
             else if(correo){ usuario=await db.obtenerUsuarioPorCorreoConHash(correo); }
             else {
-                const [cfg]=await db.pool.query("SELECT valor FROM configuracion_general WHERE clave='pin_maestro' LIMIT 1");
-                const maestro = cfg.length && cfg[0].valor ? String(cfg[0].valor) : '';
-                if (!maestro) return res.status(503).json({success:false, mensaje:'PIN maestro no configurado. Configurelo en Configuracion.'});
-                const ok = rawPin===maestro;
+                // PIN maestro: se compara contra el hash bcrypt (nunca en claro);
+                // si aun esta legado en texto plano se re-hashea al verificar.
+                const configurado = await pinMaestroService.pinMaestroConfigurado();
+                if (!configurado) return res.status(503).json({success:false, mensaje:'PIN maestro no configurado. Configurelo en Configuracion.'});
+                const ok = await pinMaestroService.verificarPinMaestro(rawPin);
                 if(!ok){ await audit.auditFromReq(req,{tipo_evento:'PIN_FALLIDO', descripcion:'PIN maestro fallido', motivo:'pin incorrecto'}); return res.status(401).json({success:false, mensaje:'PIN inválido'}); }
                 return res.json({success:true, exito:true, mensaje:'PIN válido'});
             }

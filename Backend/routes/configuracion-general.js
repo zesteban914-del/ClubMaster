@@ -1,4 +1,6 @@
 const { pool } = require('../config/database');
+const { requiereAutenticacion } = require('../middlewares/authMiddleware');
+const pinMaestroService = require('../services/pin-maestro-service');
 
 module.exports = function(app, db) {
 
@@ -6,7 +8,10 @@ module.exports = function(app, db) {
     // CONFIGURACION GENERAL DEL SISTEMA
     // =========================================================
 
-    app.get('/api/configuracion', async (req, res) => {
+    // GET exige sesion aunque el middleware global ya la pide:
+    // esta ruta devuelve TODA la configuracion y antes quedaba
+    // abierta (los GET no pasaban por el middleware de sesion).
+    app.get('/api/configuracion', requiereAutenticacion, async (req, res) => {
         try {
             const config = await db.obtenerConfiguracionGeneral();
             res.json({ success: true, config });
@@ -16,7 +21,7 @@ module.exports = function(app, db) {
         }
     });
 
-    app.put('/api/configuracion', async (req, res) => {
+    app.put('/api/configuracion', requiereAutenticacion, async (req, res) => {
         try {
             const r = await db.guardarConfiguracionGeneral(req.body);
             res.json({ success: true, mensaje: 'Configuracion guardada correctamente', ...r });
@@ -27,10 +32,10 @@ module.exports = function(app, db) {
         }
     });
 
-    app.get('/api/configuracion/pin-estado', async (req, res) => {
+    app.get('/api/configuracion/pin-estado', requiereAutenticacion, async (req, res) => {
         try {
-            const [rows] = await pool.query("SELECT valor FROM configuracion_general WHERE clave='pin_maestro' LIMIT 1");
-            const configurado = !!(rows.length && String(rows[0].valor || '').trim());
+            // Solo si esta configurado (hash presente); nunca devuelve el valor.
+            const configurado = await pinMaestroService.pinMaestroConfigurado();
             res.json({ success: true, configurado: configurado });
         } catch (error) {
             res.status(500).json({ success: false, mensaje: error.message });

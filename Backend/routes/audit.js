@@ -1,6 +1,7 @@
 module.exports = function(app, db){
   const audit = require('../services/audit-service');
-  app.get('/api/audit-logs', async (req,res)=>{
+  const { requiereAutenticacion } = require('../middlewares/authMiddleware');
+  app.get('/api/audit-logs', requiereAutenticacion, async (req,res)=>{
     const u = req.session && req.session.usuario;
     if(!u || (Number(u.id_rol)!==1 && String(u.rol).toLowerCase()!=='administrador' && String(u.rol).toLowerCase()!=='admin')){
       return res.status(403).json({success:false,mensaje:'Solo Administrador'});
@@ -12,7 +13,7 @@ module.exports = function(app, db){
       res.json({success:true, ...result});
     }catch(e){ res.status(500).json({success:false,mensaje:e.message}); }
   });
-  app.get('/api/audit-logs/opciones', async(req,res)=>{
+  app.get('/api/audit-logs/opciones', requiereAutenticacion, async(req,res)=>{
     const u = req.session && req.session.usuario;
     if(!u || (Number(u.id_rol)!==1 && String(u.rol).toLowerCase()!=='administrador' && String(u.rol).toLowerCase()!=='admin')){
       return res.status(403).json({success:false,mensaje:'Solo Administrador'});

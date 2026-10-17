@@ -1022,6 +1022,18 @@ async function migrate() {
             );
         }
         console.log('Configuracion general por defecto verificada.');
+        // Migracion segura del PIN maestro: si quedo en texto plano (instalaciones
+        // antiguas), se hashea con bcrypt sin cambiar el valor ni dejar la app
+        // sin PIN. Los valores que ya son hash se ignoran (idempotente).
+        try {
+            const bcrypt = require('bcryptjs');
+            const [pinRows] = await connection.query("SELECT valor FROM configuracion_general WHERE clave='pin_maestro' LIMIT 1");
+            if (pinRows.length && String(pinRows[0].valor || '').trim() && !/^\\$2[aby]\\$\\d{2}\\$/.test(String(pinRows[0].valor))) {
+                const hash = await bcrypt.hash(String(pinRows[0].valor), 10);
+                await connection.query("UPDATE configuracion_general SET valor=?, descripcion='PIN maestro gerente (4-6 digitos, hash bcrypt)' WHERE clave='pin_maestro'", [hash]);
+                console.log('PIN maestro migrado a hash bcrypt (valor no mostrado).');
+            }
+        } catch (e) { console.log('Aviso (migracion PIN maestro): ' + e.message); }
         await connection.query(`
             CREATE TABLE IF NOT EXISTS audit_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,

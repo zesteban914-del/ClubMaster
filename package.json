@@ -8,6 +8,7 @@
     "start": "node Backend/server.js",
     "postinstall": "echo 'install ok'",
     "migrate": "node Backend/scripts/migrate.js",
+    "migrate:pin": "node Backend/scripts/migrate-pin-hash.js",
     "migrate:prod": "NODE_ENV=production node Backend/scripts/migrate.js",
     "seed": "node Backend/scripts/seed.js",
     "seed:ventas": "node Backend/scripts/seed-ventas.js",

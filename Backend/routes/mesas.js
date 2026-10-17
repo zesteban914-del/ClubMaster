@@ -2,6 +2,7 @@ module.exports = function(app, db) {
     const audit = require('../services/audit-service');
     const zp = require('../helpers/zonas-permiso');
     const { pinLimiter } = require('../middlewares/rateLimiter');
+    const pinMaestroService = require('../services/pin-maestro-service');
     function esAdminSesion(req) {
         const u = req.session && req.session.usuario;
         if (!u) return false;
@@ -397,12 +398,9 @@ module.exports = function(app, db) {
         }catch(e){ return false; }
     }
     async function verificarPinMaestro(pin){
-        if(!pin) return false;
-        try{
-            const [rows]=await db.pool.query("SELECT valor FROM configuracion_general WHERE clave='pin_maestro' LIMIT 1");
-            if(!rows.length || !rows[0].valor) return false;
-            return String(pin)===String(rows[0].valor);
-        }catch(e){ return false; }
+        // Delegado al servicio: valida contra hash bcrypt y migra a hash
+        // cualquier PIN legado en texto plano al verificarlo correctamente.
+        try{ return await pinMaestroService.verificarPinMaestro(pin); }catch(e){ return false; }
     }
     async function registrarAuditoriaCancel({idJornada, motivo, idSolicita, idAutoriza, items, mesaId, req}){
         try{

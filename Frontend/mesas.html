@@ -64,7 +64,18 @@
     <script src="js/env-config.js"></script>
     <script src="js/config.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() { cargarMesas(); });
+        document.addEventListener('DOMContentLoaded', function() {
+            exigirSesion(function() { cargarMesas(); });
+        });
+
+        // Las API de lectura exigen sesion (antes los GET quedaban abiertos):
+        // sin sesion volvemos al login.
+        function exigirSesion(cb) {
+            fetch(API_BASE + '/api/sesion', { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(d) { if (d && d.autenticado === true) { if (cb) cb(); } else { window.location.replace('/'); } })
+                .catch(function() { if (cb) cb(); });
+        }
 
         function cargarMesas() {
             var contenedor = document.getElementById('contenedorMesas');
