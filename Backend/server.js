@@ -102,16 +102,28 @@ app.use((req,res,next)=>{
 // y genera uno aleatorio en desarrollo.
 app.use(crearSesion(env.secretSesion()));
 
+// Rutas de /api que NO exigen sesion (solo pre-login y salud).
 const RUTAS_API_PUBLICAS = [
     '/auth/login', '/auth/pin-login', '/auth/logout',
     '/registro', '/recuperar-contrasena', '/auth/recuperar-password', '/reiniciar-contrasena',
     '/sesion',
     '/2fa/setup', '/2fa/enable', '/2fa/disable', '/2fa/status'
 ];
+// GET publicos: estrictamente los que funcionan ANTES de tener sesion.
+// - '/sesion': sonda de sesión propia que usan login y dashboard para
+//   saber si hay sesión (sin sesión devuelve {autenticado:false}, sin datos).
+// - '/2fa/status': booleano de estado 2FA del flujo de ingreso (no expone secretos).
+// Todo lo demas (backup, auditoria, configuracion, reportes, caja, etc.)
+// exige sesion aunque sea GET: antes todos los GET quedaban abiertos.
+const RUTAS_API_PUBLICAS_GET = ['/sesion', '/2fa/status'];
 app.use('/api', function(req, res, next) {
-    if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') return next();
+    if (req.method === 'OPTIONS' || req.method === 'HEAD') return next();
+    if (req.method === 'GET') {
+        if (RUTAS_API_PUBLICAS_GET.indexOf(req.path) !== -1) return next();
+        return requiereAutenticacion(req, res, next);
+    }
     if (RUTAS_API_PUBLICAS.indexOf(req.path) !== -1) return next();
-    return require('./middlewares/authMiddleware').requiereAutenticacion(req, res, next);
+    return requiereAutenticacion(req, res, next);
 });
 
 const { detectarColumnasProductos } = require('./helpers/column-detection');
@@ -155,8 +167,11 @@ app.use((err, req, res, next) => {
     res.status(500).json({ success: false, mensaje: 'Error interno del servidor' });
 });
 
-// Serverless (Vercel): los timers de backup mantienen vivo el worker; se omiten.
-if (!process.env.VERCEL) {
+// Backups internos (mysqldump local + diario 4 AM): apagados por defecto,
+// tambien en produccion — alli el unico respaldo es backup-service -> B2.
+// Solo se encienden en desarrollo con BACKUP_INTERNO=true. En Vercel
+// (serverless) se omiten siempre: los timers mantienen vivo el worker.
+if (!process.env.VERCEL && require('./config/backups-internos').respaldosInternosActivos()) {
     try {
         require('./services/backup').initAutoBackup();
     } catch (e) {

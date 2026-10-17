@@ -78,15 +78,13 @@ module.exports = function(app, db) {
             }
             const reporte = await db.calcularYGuardarArqueo(id_jornada, arqueo, incluir_propina_caja, id_usuario_cierre, false);
             await audit.auditFromReq(req,{usuario_id:id_usuario_cierre, tipo_evento:'CIERRE_CAJA', descripcion:`Cierre jornada ${id_jornada} diferencia ${reporte.diferencia||0}`, motivo:'cierre caja'});
-            // Backup automático + Email resumen (no bloquea respuesta)
+            // Email resumen (no bloquea respuesta). El backup de cierre
+            // interno esta apagado por defecto (tambien en produccion):
+            // generarBackupCierre lo omite salvo BACKUP_INTERNO=true en dev.
             setImmediate(async()=>{
               try{
                 const generar = app.generarBackupCierre || global.generarBackupCierre;
                 if(generar) await generar(id_jornada);
-                else {
-                  const poolBackup = db.pool || require('../config/database').pool;
-                  console.log(`Backup cierre #${id_jornada} solicitado (sin generador)`);
-                }
               }catch(e){ console.error('Backup cierre error',e.message); }
               try{
                 let dest=null;
